@@ -1,0 +1,52 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getDb } from '@/lib/db';
+import { getAuthFromRequest } from '@/lib/auth';
+
+interface RouteParams { params: Promise<{ id: string }> }
+
+// PATCH /api/roles/[id]
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+    const auth = getAuthFromRequest(request);
+    if (!auth?.adminAccess) return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+
+    const { id } = await params;
+    const db = getDb();
+    const body = await request.json();
+
+    const updateData: any = {};
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.description !== undefined) updateData.description = body.description;
+    if (body.admin_access !== undefined) updateData.admin_access = body.admin_access;
+    if (body.app_access !== undefined) updateData.app_access = body.app_access;
+    if (body.icon !== undefined) updateData.icon = body.icon;
+    if (body.permissions !== undefined) updateData.permissions_json = JSON.stringify(body.permissions);
+
+    await db('directus_roles').where('id', id).update(updateData);
+
+    await db('directus_activity').insert({
+        action: 'update', user: auth.email, user_id: auth.userId,
+        collection: 'directus_roles', item: id,
+        meta_json: JSON.stringify(body),
+    });
+
+    const role = await db('directus_roles').where('id', id).first();
+    return NextResponse.json({ data: { ...role, permissions: JSON.parse(role.permissions_json || '{}') } });
+}
+
+// DELETE /api/roles/[id]
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
+    const auth = getAuthFromRequest(request);
+    if (!auth?.adminAccess) return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+
+    const { id } = await params;
+    const db = getDb();
+
+    // Check if any users have this role
+    const users = await db('directus_users').where('role', id).count('* as count').first();
+    if ((users as any)?.count > 0) {
+        return NextResponse.json({ error: 'Cannot delete role with assigned users' }, { status: 400 });
+    }
+
+    await db('directus_roles').where('id', id).delete();
+    return NextResponse.json({ success: true });
+}
