@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 
-interface RouteParams {
-    params: Promise<{ collection: string; id: string }>;
-}
+type RouteParams = { params: Promise<Record<string, string>> }
 
 // GET /api/items/[collection]/[id] — get single item
 export async function GET(request: NextRequest, { params }: RouteParams) {

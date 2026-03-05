@@ -4,7 +4,7 @@ import { getAuthFromRequest } from '@/lib/auth';
 import fs from 'fs';
 import path from 'path';
 
-interface RouteParams { params: Promise<{ id: string }> }
+type RouteParams = { params: Promise<Record<string, string>> }
 
 // GET /api/files/[id]
 export async function GET(request: NextRequest, { params }: RouteParams) {

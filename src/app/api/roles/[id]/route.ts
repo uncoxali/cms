@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 
-interface RouteParams { params: Promise<{ id: string }> }
+type RouteParams = { params: Promise<Record<string, string>> }
 
 // PATCH /api/roles/[id]
 export async function PATCH(request: NextRequest, { params }: RouteParams) {

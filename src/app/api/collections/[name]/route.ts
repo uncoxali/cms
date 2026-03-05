@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 
-interface RouteParams { params: Promise<{ name: string }> }
+type RouteParams = { params: Promise<Record<string, string>> }
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const auth = getAuthFromRequest(request);
