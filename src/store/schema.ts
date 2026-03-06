@@ -13,7 +13,11 @@ interface SchemaState {
     createCollection: (key: string, config: CollectionConfig & { fields?: any[] }) => Promise<void>;
     dropCollection: (key: string) => Promise<void>;
 
-    // Local actions (used by frontend before API sync)
+    // API-backed field operations
+    addFieldApi: (collectionKey: string, field: FieldConfig & { relation?: any }) => Promise<void>;
+    deleteFieldApi: (collectionKey: string, fieldName: string) => Promise<void>;
+
+    // Local actions
     addCollection: (key: string, config: CollectionConfig) => void;
     updateCollection: (key: string, updates: Partial<CollectionConfig>) => void;
     deleteCollection: (key: string) => void;
@@ -49,14 +53,24 @@ export const useSchemaStore = create<SchemaState>()(
                             name: key,
                             label: col.label || key,
                             icon: col.icon || 'database',
-                            fields: (col.fields || []).map((f: any) => ({
-                                name: f.name,
-                                type: mapSqliteType(f.type),
-                                label: f.name.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
-                                required: !f.nullable,
-                                hidden: false,
-                                interface: mapSqliteTypeToInterface(f.type),
-                            })),
+                            fields: (col.fields || []).map((f: any) => {
+                                const isRelation = !!f.relation;
+                                return {
+                                    name: f.name,
+                                    type: isRelation ? 'relation' : mapSqliteType(f.type),
+                                    label: f.name.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+                                    required: !f.nullable,
+                                    hidden: false,
+                                    interface: isRelation ? 'relation' : mapSqliteTypeToInterface(f.type),
+                                    ...(isRelation ? {
+                                        relationInfo: {
+                                            collection: f.relation.related_collection,
+                                            type: 'many-to-one' as const,
+                                            displayField: f.relation.display_field || 'id',
+                                        },
+                                    } : {}),
+                                };
+                            }),
                         };
                     }
 
@@ -74,33 +88,45 @@ export const useSchemaStore = create<SchemaState>()(
             },
 
             createCollection: async (key, config) => {
-                try {
-                    await api.post(`/schema/${key}`, {
-                        label: config.label,
-                        icon: config.icon,
-                        fields: config.fields?.map((f: any) => ({
-                            name: f.name,
-                            type: f.type || 'string',
-                            nullable: !f.required,
-                        })),
-                    });
-                    // Re-fetch schema
-                    await get().fetchSchema();
-                } catch (err) {
-                    console.error('[SchemaStore] create error:', err);
-                    // Fallback to local
-                    get().addCollection(key, config);
-                }
+                await api.post(`/schema/${key}`, {
+                    label: config.label,
+                    icon: config.icon,
+                    fields: config.fields?.map((f: any) => ({
+                        name: f.name,
+                        type: f.type || 'string',
+                        nullable: !f.required,
+                    })),
+                });
+                await get().fetchSchema();
             },
 
             dropCollection: async (key) => {
-                try {
-                    await api.del(`/schema/${key}`);
-                    await get().fetchSchema();
-                } catch (err) {
-                    console.error('[SchemaStore] drop error:', err);
-                    get().deleteCollection(key);
+                await api.del(`/schema/${key}`);
+                await get().fetchSchema();
+            },
+
+            addFieldApi: async (collectionKey, field) => {
+                const payload: any = {
+                    name: field.name,
+                    type: field.type || 'string',
+                    nullable: !field.required,
+                };
+                if (field.type === 'relation' && (field as any).relation) {
+                    payload.relation = (field as any).relation;
                 }
+                await api.patch(`/schema/${collectionKey}`, {
+                    action: 'add_field',
+                    field: payload,
+                });
+                await get().fetchSchema();
+            },
+
+            deleteFieldApi: async (collectionKey, fieldName) => {
+                await api.patch(`/schema/${collectionKey}`, {
+                    action: 'drop_field',
+                    field_name: fieldName,
+                });
+                await get().fetchSchema();
             },
 
             addCollection: (key, config) => set((state) => ({

@@ -26,7 +26,7 @@ export const useNotificationsStore = create<NotificationsState>()(
                 {
                     id: 'not_1',
                     title: 'Welcome to CMS',
-                    message: 'Your Directus clone is up and running.',
+                    message: 'Your Neurofy clone is up and running.',
                     timestamp: new Date().toISOString(),
                     isRead: false
                 }
@@ -53,7 +53,7 @@ export const useNotificationsStore = create<NotificationsState>()(
             clearAll: () => set({ notifications: [] })
         }),
         {
-            name: 'directus-notifications-storage',
+            name: 'neurofy-notifications-storage',
         }
     )
 );

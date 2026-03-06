@@ -18,32 +18,34 @@ export async function GET(request: NextRequest) {
         );
 
         const systemTables = [
-            'directus_users', 'directus_roles', 'directus_activity',
-            'directus_files', 'directus_folders', 'directus_flows',
-            'directus_flow_logs', 'directus_settings', 'directus_collections_meta',
+            'neurofy_users', 'neurofy_roles', 'neurofy_activity',
+            'neurofy_files', 'neurofy_folders', 'neurofy_flows',
+            'neurofy_flow_logs', 'neurofy_settings', 'neurofy_collections_meta',
         ];
 
         const collections: Record<string, any> = {};
+
+        // Load all relations at once
+        const allRelations = await db('neurofy_relations').select('*').catch(() => []);
 
         for (const table of tables) {
             const tableName = table.name;
             const isSystem = systemTables.includes(tableName);
 
-            // Get column info
             const columns = await db.raw(`PRAGMA table_info('${tableName}')`);
-            // Get foreign keys
             const foreignKeys = await db.raw(`PRAGMA foreign_key_list('${tableName}')`);
-            // Get indexes
             const indexes = await db.raw(`PRAGMA index_list('${tableName}')`);
 
-            // Get metadata if exists
-            const meta = await db('directus_collections_meta')
+            const meta = await db('neurofy_collections_meta')
                 .where('collection', tableName)
                 .first()
                 .catch(() => null);
 
+            const tableRelations = allRelations.filter((r: any) => r.collection === tableName);
+
             const fields = columns.map((col: any) => {
                 const fk = foreignKeys.find((fk: any) => fk.from === col.name);
+                const rel = tableRelations.find((r: any) => r.field === col.name);
                 return {
                     name: col.name,
                     type: col.type || 'TEXT',
@@ -52,6 +54,13 @@ export async function GET(request: NextRequest) {
                     is_primary_key: col.pk === 1,
                     is_unique: indexes.some((idx: any) => idx.unique && idx.name?.includes(col.name)),
                     foreign_key: fk ? { table: fk.table, column: fk.to } : null,
+                    relation: rel ? {
+                        related_collection: rel.related_collection,
+                        related_field: rel.related_field,
+                        display_field: rel.display_field,
+                        on_delete: rel.on_delete,
+                        required: !!rel.required,
+                    } : null,
                 };
             });
 

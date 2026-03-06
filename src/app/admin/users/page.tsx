@@ -31,6 +31,7 @@ import { useRolesStore } from '@/store/roles';
 import { useActivityStore } from '@/store/activity';
 import { useNotificationsStore } from '@/store/notifications';
 import { api } from '@/lib/api';
+import { useConfirm } from '@/components/admin/ConfirmDialog';
 import {
   Search, Plus, Mail, Shield, Edit2, Trash2, Users,
   MoreHorizontal, ChevronDown, UserCheck, UserX
@@ -61,6 +62,7 @@ export default function UsersPage() {
   const { roles } = useRolesStore();
   const { addLog } = useActivityStore();
   const { addNotification } = useNotificationsStore();
+  const confirm = useConfirm();
 
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,7 +160,7 @@ export default function UsersPage() {
         role: inviteForm.roleId,
         status: 'invited',
       });
-      addLog({ action: 'create', collection: 'directus_users', item: inviteForm.email, user: 'Admin User' });
+      addLog({ action: 'create', collection: 'neurofy_users', item: inviteForm.email, user: 'Admin User' });
       addNotification({ title: 'User Invited', message: `Invitation sent to ${inviteForm.email}.` });
       setInviteOpen(false);
       setInviteForm({ firstName: '', lastName: '', email: '', roleId: 'role_editor' });
@@ -170,14 +172,14 @@ export default function UsersPage() {
 
   const handleDelete = async (userId: string) => {
     const user = users.find(u => u.id === userId);
-    if (confirm(`Remove user "${user?.firstName} ${user?.lastName}"?`)) {
-      try {
-        await api.del(`/users/${userId}`);
-        addLog({ action: 'delete', collection: 'directus_users', item: userId, user: 'Admin User' });
-        addNotification({ title: 'User Removed', message: `${user?.email} has been removed.` });
-        fetchUsers();
-      } catch {}
-    }
+    const ok = await confirm({ title: 'Remove User', message: `Are you sure you want to remove "${user?.firstName} ${user?.lastName}"? This action cannot be undone.`, confirmText: 'Remove', severity: 'error' });
+    if (!ok) return;
+    try {
+      await api.del(`/users/${userId}`);
+      addLog({ action: 'delete', collection: 'neurofy_users', item: userId, user: 'Admin User' });
+      addNotification({ title: 'User Removed', message: `${user?.email} has been removed.` });
+      fetchUsers();
+    } catch {}
   };
 
   const timeAgo = (iso: string) => {

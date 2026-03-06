@@ -138,18 +138,13 @@ export default function UserEditorPage({ params }: { params: Promise<{ id: strin
     try {
       const res = await api.get<{ data: any }>(`/users/${id}`);
       const u = res.data;
-      const roleMap: Record<string, string> = {
-        'Administrator': 'role_admin',
-        'Editor': 'role_editor',
-        'Viewer': 'role_viewer',
-      };
       setForm({
         firstName: u.first_name || '',
         lastName: u.last_name || '',
         email: u.email || '',
         password: '',
         confirmPassword: '',
-        roleId: roleMap[u.role_name] || u.role || 'role_editor',
+        roleId: u.role_id || u.role || 'role_editor',
         status: u.status || 'active',
         phone: u.phone || '',
         jobTitle: u.job_title || '',
@@ -228,7 +223,7 @@ export default function UserEditorPage({ params }: { params: Promise<{ id: strin
         }
         const createRes = await api.post<{ data?: { id?: number } }>('/users', payload);
         const newUserId = createRes?.data?.id;
-        addLog({ action: 'create', collection: 'directus_users', item: form.email, user: currentUser?.name || 'Admin' });
+        addLog({ action: 'create', collection: 'neurofy_users', item: form.email, user: currentUser?.name || 'Admin' });
         addNotification({ title: 'User Created', message: `${form.firstName || form.email} has been created.` });
 
         if (!form.password) {
@@ -248,13 +243,13 @@ export default function UserEditorPage({ params }: { params: Promise<{ id: strin
         if (originalData) {
           const roleMap: Record<string, string> = { 'Administrator': 'role_admin', 'Editor': 'role_editor', 'Viewer': 'role_viewer' };
           if ((roleMap[originalData.role_name] || originalData.role) !== form.roleId) {
-            addLog({ action: 'update', collection: 'directus_users', item: id, user: currentUser?.name || 'Admin', meta: { field: 'role', from: originalData.role_name, to: roleNameMap[form.roleId] } });
+            addLog({ action: 'update', collection: 'neurofy_users', item: id, user: currentUser?.name || 'Admin', meta: { field: 'role', from: originalData.role_name, to: roleNameMap[form.roleId] } });
           }
           if (originalData.status !== form.status) {
-            addLog({ action: 'update', collection: 'directus_users', item: id, user: currentUser?.name || 'Admin', meta: { field: 'status', from: originalData.status, to: form.status } });
+            addLog({ action: 'update', collection: 'neurofy_users', item: id, user: currentUser?.name || 'Admin', meta: { field: 'status', from: originalData.status, to: form.status } });
           }
           if (originalData.email !== form.email) {
-            addLog({ action: 'update', collection: 'directus_users', item: id, user: currentUser?.name || 'Admin', meta: { field: 'email', from: originalData.email, to: form.email } });
+            addLog({ action: 'update', collection: 'neurofy_users', item: id, user: currentUser?.name || 'Admin', meta: { field: 'email', from: originalData.email, to: form.email } });
           }
         }
 
@@ -276,7 +271,7 @@ export default function UserEditorPage({ params }: { params: Promise<{ id: strin
   const handleDelete = async () => {
     try {
       await api.del(`/users/${id}`);
-      addLog({ action: 'delete', collection: 'directus_users', item: id, user: currentUser?.name || 'Admin' });
+      addLog({ action: 'delete', collection: 'neurofy_users', item: id, user: currentUser?.name || 'Admin' });
       addNotification({ title: 'User Deleted', message: `${userName} has been removed.` });
       router.push('/admin/users');
     } catch (err: any) {
@@ -290,7 +285,7 @@ export default function UserEditorPage({ params }: { params: Promise<{ id: strin
     if (newPassword !== confirmNewPassword) { setError('Passwords do not match'); return; }
     try {
       await api.patch(`/users/${id}`, { password: newPassword });
-      addLog({ action: 'update', collection: 'directus_users', item: id, user: currentUser?.name || 'Admin', meta: { field: 'password' } });
+      addLog({ action: 'update', collection: 'neurofy_users', item: id, user: currentUser?.name || 'Admin', meta: { field: 'password' } });
       addNotification({ title: 'Password Reset', message: `Password for ${userName} has been changed.` });
       setResetPasswordOpen(false);
       setNewPassword('');

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { getAuthFromRequest } from '@/lib/auth';
+import { getAuthFromRequest, requireEditor } from '@/lib/auth';
 import path from 'path';
 import fs from 'fs/promises';
 import { existsSync } from 'fs';
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     const favorites = url.searchParams.get('favorites') === 'true';
 
     try {
-        let query = db('directus_files').select('*');
+        let query = db('neurofy_files').select('*');
 
         if (type && type !== 'all') query = query.where('type', type);
         if (folder) query = query.where('folder', folder);
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
         }
 
         const files = await query.orderBy('uploaded_on', 'desc');
-        const folders = await db('directus_folders').select('*');
+        const folders = await db('neurofy_folders').select('*');
 
         return NextResponse.json({
             data: files.map(normalizeFileRow),
@@ -82,8 +82,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-    const auth = getAuthFromRequest(request);
-    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const check = await requireEditor(getAuthFromRequest(request));
+    if (!check.authorized) return check.response;
 
     const db = getDb();
 
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
 
         const now = new Date().toISOString();
 
-        await db('directus_files').insert({
+        await db('neurofy_files').insert({
             id,
             storage: 'local',
             filename_disk: filenameDisk,
@@ -138,22 +138,22 @@ export async function POST(request: NextRequest) {
             description,
             tags_json: JSON.stringify(tags),
             folder,
-            uploaded_by: auth.email,
+            uploaded_by: check.auth.email,
             uploaded_on: now,
             modified_on: now,
             is_favorite: 0,
         });
 
-        await db('directus_activity').insert({
+        await db('neurofy_activity').insert({
             action: 'create',
-            user: auth.email,
-            user_id: auth.userId,
-            collection: 'directus_files',
+            user: check.auth.email,
+            user_id: check.auth.userId,
+            collection: 'neurofy_files',
             item: id,
             meta_json: JSON.stringify({ filename: originalName, mime_type: file.type, filesize: file.size }),
         });
 
-        const fileRecord = await db('directus_files').where('id', id).first();
+        const fileRecord = await db('neurofy_files').where('id', id).first();
         return NextResponse.json({ data: normalizeFileRow(fileRecord) }, { status: 201 });
     } catch (error: any) {
         console.error('Upload Error:', error);

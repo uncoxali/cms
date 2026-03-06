@@ -8,10 +8,10 @@ export async function GET(request: NextRequest) {
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const db = getDb();
-    const roles = await db('directus_roles').select('*');
+    const roles = await db('neurofy_roles').select('*');
 
     // Get user counts per role
-    const userCounts = await db('directus_users')
+    const userCounts = await db('neurofy_users')
         .select('role')
         .count('* as count')
         .groupBy('role');
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const id = `role_${Date.now().toString(36)}`;
 
-    await db('directus_roles').insert({
+    await db('neurofy_roles').insert({
         id,
         name: body.name,
         description: body.description || null,
@@ -49,9 +49,9 @@ export async function POST(request: NextRequest) {
         permissions_json: JSON.stringify(body.permissions || {}),
     });
 
-    await db('directus_activity').insert({
+    await db('neurofy_activity').insert({
         action: 'create', user: auth.email, user_id: auth.userId,
-        collection: 'directus_roles', item: id,
+        collection: 'neurofy_roles', item: id,
         meta_json: JSON.stringify({ name: body.name }),
     });
 

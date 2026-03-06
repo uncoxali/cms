@@ -49,7 +49,7 @@ export const useBookmarksStore = create<BookmarksState>()(
             })),
         }),
         {
-            name: 'directus-bookmarks-storage',
+            name: 'neurofy-bookmarks-storage',
         }
     )
 );

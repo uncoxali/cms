@@ -23,12 +23,15 @@ import { useSchemaStore } from '@/store/schema';
 import { useActivityStore } from '@/store/activity';
 import { useNotificationsStore } from '@/store/notifications';
 import { Database, Plus, Trash2 } from 'lucide-react';
+import { useConfirm } from '@/components/admin/ConfirmDialog';
 
 export default function DataModelListPage() {
   const router = useRouter();
-  const { collections, addCollection, deleteCollection } = useSchemaStore();
+  const { collections, createCollection, dropCollection } = useSchemaStore();
   const { addLog } = useActivityStore();
   const { addNotification } = useNotificationsStore();
+  const confirm = useConfirm();
+  const [creating, setCreating] = useState(false);
 
   const collectionsList = Object.keys(collections).map(key => ({
     key,
@@ -40,37 +43,46 @@ export default function DataModelListPage() {
   const [newName, setNewName] = useState('');
   const [newLabel, setNewLabel] = useState('');
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!newName.trim()) return;
     const key = newName.toLowerCase().replace(/\s+/g, '_');
     if (collections[key]) {
       addNotification({ title: 'Error', message: `Collection "${key}" already exists.` });
       return;
     }
-    addCollection(key, {
-      id: key,
-      name: newLabel || newName,
-      label: newLabel || newName,
-      icon: 'Database',
-      fields: [
-        { name: 'id', label: 'ID', type: 'number', group: 'Meta', sortable: true, searchable: true },
-      ],
-      preset: { visibleColumns: ['id'], pageSize: 20 },
-    });
-    addLog({ action: 'create', collection: 'directus_collections', item: key, user: 'Admin User', meta: { label: newLabel || newName } });
-    addNotification({ title: 'Collection Created', message: `"${newLabel || newName}" is ready to configure.` });
-    setCreateOpen(false);
-    setNewName('');
-    setNewLabel('');
-    router.push(`/admin/settings/data-model/${key}`);
+    setCreating(true);
+    try {
+      await createCollection(key, {
+        id: key,
+        name: newLabel || newName,
+        label: newLabel || newName,
+        icon: 'Database',
+        fields: [
+          { name: 'id', label: 'ID', type: 'number', group: 'Meta', sortable: true, searchable: true },
+        ],
+        preset: { visibleColumns: ['id'], pageSize: 20 },
+      });
+      addNotification({ title: 'Collection Created', message: `"${newLabel || newName}" table created in database.` });
+      setCreateOpen(false);
+      setNewName('');
+      setNewLabel('');
+      router.push(`/admin/settings/data-model/${key}`);
+    } catch (err: any) {
+      addNotification({ title: 'Error', message: err.message || 'Failed to create collection' });
+    } finally {
+      setCreating(false);
+    }
   };
 
-  const handleDelete = (key: string, e: React.MouseEvent) => {
+  const handleDelete = async (key: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm(`Delete collection "${key}"? This cannot be undone.`)) {
-      deleteCollection(key);
-      addLog({ action: 'delete', collection: 'directus_collections', item: key, user: 'Admin User' });
-      addNotification({ title: 'Collection Deleted', message: `"${key}" has been removed.` });
+    const ok = await confirm({ title: 'Delete Collection', message: `Are you sure you want to delete collection "${key}"? All data in this collection will be lost. This cannot be undone.`, confirmText: 'Delete Collection', severity: 'error' });
+    if (!ok) return;
+    try {
+      await dropCollection(key);
+      addNotification({ title: 'Collection Deleted', message: `"${key}" table dropped from database.` });
+    } catch (err: any) {
+      addNotification({ title: 'Error', message: err.message || 'Failed to delete collection' });
     }
   };
 
@@ -146,7 +158,7 @@ export default function DataModelListPage() {
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
           <Button onClick={() => setCreateOpen(false)} color="inherit">Cancel</Button>
-          <Button variant="contained" onClick={handleCreate} disabled={!newName.trim()}>Create</Button>
+          <Button variant="contained" onClick={handleCreate} disabled={!newName.trim() || creating}>{creating ? 'Creating...' : 'Create'}</Button>
         </DialogActions>
       </Dialog>
     </Box>

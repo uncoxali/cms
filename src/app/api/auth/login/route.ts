@@ -12,19 +12,21 @@ export async function POST(request: NextRequest) {
 
         const db = getDb();
 
-        const user = await db('directus_users')
-            .leftJoin('directus_roles', 'directus_users.role', 'directus_roles.id')
-            .where('directus_users.email', email)
-            .where('directus_users.status', 'active')
+        const user = await db('neurofy_users')
+            .leftJoin('neurofy_roles', 'neurofy_users.role', 'neurofy_roles.id')
+            .where('neurofy_users.email', email)
+            .where('neurofy_users.status', 'active')
             .select(
-                'directus_users.id',
-                'directus_users.email',
-                'directus_users.password_hash',
-                'directus_users.first_name',
-                'directus_users.last_name',
-                'directus_users.role as role_id',
-                'directus_roles.name as role_name',
-                'directus_roles.admin_access'
+                'neurofy_users.id',
+                'neurofy_users.email',
+                'neurofy_users.password_hash',
+                'neurofy_users.first_name',
+                'neurofy_users.last_name',
+                'neurofy_users.role as role_id',
+                'neurofy_roles.name as role_name',
+                'neurofy_roles.admin_access',
+                'neurofy_roles.app_access',
+                'neurofy_roles.permissions_json'
             )
             .first();
 
@@ -47,9 +49,12 @@ export async function POST(request: NextRequest) {
         });
 
         // Update last_access
-        await db('directus_users').where('id', user.id).update({ last_access: new Date().toISOString() });
+        await db('neurofy_users').where('id', user.id).update({ last_access: new Date().toISOString() });
 
         // Set Cookie and Return Data
+        let permissions = [];
+        try { permissions = user.permissions_json ? JSON.parse(user.permissions_json) : []; } catch { permissions = []; }
+
         const response = NextResponse.json({
             access_token: token,
             expires: 60 * 60 * 24 * 7,
@@ -60,7 +65,9 @@ export async function POST(request: NextRequest) {
                 last_name: user.last_name || 'User',
                 role: user.role_id,
                 role_name: user.role_name,
-                admin_access: user.admin_access ?? false,
+                admin_access: !!user.admin_access,
+                app_access: user.app_access !== 0,
+                permissions,
             }
         });
 

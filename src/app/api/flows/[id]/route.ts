@@ -11,11 +11,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
     const db = getDb();
-    const flow = await db('directus_flows').where('id', id).first();
+    const flow = await db('neurofy_flows').where('id', id).first();
     if (!flow) return NextResponse.json({ error: 'Flow not found' }, { status: 404 });
 
     // Get logs for this flow
-    const logs = await db('directus_flow_logs').where('flow_id', id).orderBy('started_at', 'desc').limit(50);
+    const logs = await db('neurofy_flow_logs').where('flow_id', id).orderBy('started_at', 'desc').limit(50);
 
     return NextResponse.json({
         data: {
@@ -53,11 +53,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.operations !== undefined) updateData.operations_json = JSON.stringify(body.operations);
     if (body.permission !== undefined) updateData.permission = body.permission;
 
-    await db('directus_flows').where('id', id).update(updateData);
+    await db('neurofy_flows').where('id', id).update(updateData);
 
-    await db('directus_activity').insert({
+    await db('neurofy_activity').insert({
         action: 'update', user: auth.email, user_id: auth.userId,
-        collection: 'directus_flows', item: id,
+        collection: 'neurofy_flows', item: id,
         meta_json: JSON.stringify(body),
     });
 
@@ -72,11 +72,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const db = getDb();
 
-    await db('directus_flows').where('id', id).delete();
+    await db('neurofy_flows').where('id', id).delete();
 
-    await db('directus_activity').insert({
+    await db('neurofy_activity').insert({
         action: 'delete', user: auth.email, user_id: auth.userId,
-        collection: 'directus_flows', item: id,
+        collection: 'neurofy_flows', item: id,
     });
 
     return NextResponse.json({ success: true });

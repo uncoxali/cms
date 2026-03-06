@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, Fragment } from 'react';
 import { useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -180,7 +180,7 @@ export default function ActivityPage() {
                 const config = ACTION_CONFIG[log.action] || ACTION_CONFIG.create;
                 const isExpanded = expandedId === log.id;
                 return (
-                  <Box component="tbody" key={log.id}>
+                  <Fragment key={log.id}>
                     <TableRow
                       hover
                       onClick={() => setExpandedId(isExpanded ? null : log.id)}
@@ -264,7 +264,7 @@ export default function ActivityPage() {
                         </Collapse>
                       </TableCell>
                     </TableRow>
-                  </Box>
+                  </Fragment>
                 );
               })
             )}

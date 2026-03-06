@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 
-// GET /api/activity — list activity logs with filters
+// GET /api/activity — list activity logs
 export async function GET(request: NextRequest) {
     const auth = getAuthFromRequest(request);
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const userId = url.searchParams.get('user_id');
 
     try {
-        let query = db('directus_activity').select('*');
+        let query = db('neurofy_activity').select('*');
 
         if (action && action !== 'all') query = query.where('action', action);
         if (collection) query = query.where('collection', collection);
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     try {
-        const [id] = await db('directus_activity').insert({
+        const [id] = await db('neurofy_activity').insert({
             action: body.action || 'update',
             user: body.user || auth.email,
             user_id: body.user_id || auth.userId,

@@ -38,11 +38,11 @@ export async function POST() {
 export async function GET() {
     try {
         const db = getDb();
-        const hasUsers = await db.schema.hasTable('directus_users');
+        const hasUsers = await db.schema.hasTable('neurofy_users');
         if (!hasUsers) {
             return NextResponse.json({ initialized: false });
         }
-        const users = await db('directus_users').count('* as count').first();
+        const users = await db('neurofy_users').count('* as count').first();
         return NextResponse.json({
             initialized: true,
             userCount: users?.count || 0,

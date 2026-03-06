@@ -15,7 +15,14 @@ import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Alert from '@mui/material/Alert';
 import Divider from '@mui/material/Divider';
-import { Eye, EyeOff, LogIn, Shield, Zap, Database, BarChart3, Lock } from 'lucide-react';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import CircularProgress from '@mui/material/CircularProgress';
+import { useTheme, alpha } from '@mui/material/styles';
+import { Eye, EyeOff, LogIn, Shield, Zap, Database, BarChart3, Lock, KeyRound } from 'lucide-react';
+import { api } from '@/lib/api';
 
 const ROLES = [
   { value: 'admin', label: 'Administrator', desc: 'Full system access', color: '#EF4444' },
@@ -37,6 +44,7 @@ export default function LoginPage() {
   const setError = useAuthStore((state) => state.setError);
   const { addLog } = useActivityStore();
   const router = useRouter();
+  const theme = useTheme();
 
   const [email, setEmail] = useState('admin@example.com');
   const [password, setPassword] = useState('admin123');
@@ -44,28 +52,71 @@ export default function LoginPage() {
   const [role, setRole] = useState<Role>('admin');
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [useApi, setUseApi] = useState(true); // Toggle between API and demo mode
+
+  // Forgot Password state
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handleLogin = async () => {
     setLoading(true);
     setError(null);
 
-    if (useApi) {
-      // Real API login
-      const success = await loginWithApi(email, password);
-      if (success) {
-        router.push('/admin/dashboard');
-      }
-      setLoading(false);
-    } else {
-      // Demo mode (legacy)
-      setTimeout(() => {
-        login(role);
-        addLog({ action: 'login', user: role === 'admin' ? 'Admin User' : role === 'editor' ? 'Editor User' : 'Viewer User', meta: { role } });
-        router.push('/admin/dashboard');
-        setLoading(false);
-      }, 800);
+    const success = await loginWithApi(email, password);
+    if (success) {
+      router.push('/admin/dashboard');
     }
+    setLoading(false);
+  };
+
+  const handleResetPassword = async () => {
+    setResetMessage(null);
+
+    if (!resetEmail) {
+      setResetMessage({ type: 'error', text: 'Please enter your email address' });
+      return;
+    }
+    if (!resetNewPassword || resetNewPassword.length < 6) {
+      setResetMessage({ type: 'error', text: 'Password must be at least 6 characters' });
+      return;
+    }
+    if (resetNewPassword !== resetConfirmPassword) {
+      setResetMessage({ type: 'error', text: 'Passwords do not match' });
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail, newPassword: resetNewPassword }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setResetMessage({ type: 'success', text: 'Password reset successfully! You can now sign in with your new password.' });
+        setResetNewPassword('');
+        setResetConfirmPassword('');
+      } else {
+        setResetMessage({ type: 'error', text: data.error || 'Reset failed' });
+      }
+    } catch {
+      setResetMessage({ type: 'error', text: 'Network error. Please try again.' });
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleCloseForgot = () => {
+    setForgotOpen(false);
+    setResetEmail('');
+    setResetNewPassword('');
+    setResetConfirmPassword('');
+    setResetMessage(null);
   };
 
   return (
@@ -74,7 +125,7 @@ export default function LoginPage() {
       height: '100vh',
       display: 'flex',
       overflow: 'hidden',
-      bgcolor: '#0a0b0e',
+      bgcolor: theme.palette.background.default,
     }}>
       {/* Left Panel — Branding */}
       <Box sx={{
@@ -86,33 +137,31 @@ export default function LoginPage() {
         position: 'relative',
         overflow: 'hidden',
       }}>
-        {/* Background gradient blobs */}
         <Box sx={{
           position: 'absolute', top: -100, left: -100,
           width: 400, height: 400, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(102,68,255,0.15) 0%, transparent 70%)',
+          background: `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.15)} 0%, transparent 70%)`,
           filter: 'blur(60px)',
         }} />
         <Box sx={{
           position: 'absolute', bottom: -50, right: -50,
           width: 300, height: 300, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(26,188,156,0.1) 0%, transparent 70%)',
+          background: `radial-gradient(circle, ${alpha(theme.palette.secondary.main, 0.12)} 0%, transparent 70%)`,
           filter: 'blur(60px)',
         }} />
 
         <Box sx={{ position: 'relative', zIndex: 1 }}>
-          {/* Logo */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 6 }}>
             <Box sx={{
               width: 48, height: 48, borderRadius: '14px',
-              background: 'linear-gradient(135deg, #6644ff 0%, #4422cc 100%)',
+              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 8px 32px rgba(102, 68, 255, 0.3)',
+              boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.35)}`,
             }}>
               <Typography sx={{ color: 'white', fontWeight: 800, fontSize: 20 }}>N</Typography>
             </Box>
             <Box>
-              <Typography variant="h5" fontWeight={800} color="white" letterSpacing="-0.03em">
+              <Typography variant="h5" fontWeight={800} color="text.primary" letterSpacing="-0.03em">
                 NexDirect
               </Typography>
               <Typography variant="caption" color="text.secondary" fontSize={12}>
@@ -121,11 +170,10 @@ export default function LoginPage() {
             </Box>
           </Box>
 
-          {/* Tagline */}
-          <Typography variant="h3" fontWeight={800} color="white" letterSpacing="-0.03em" lineHeight={1.2} mb={2}>
+          <Typography variant="h3" fontWeight={800} color="text.primary" letterSpacing="-0.03em" lineHeight={1.2} mb={2}>
             Your data,{' '}
             <Box component="span" sx={{
-              background: 'linear-gradient(135deg, #6644ff 0%, #1abc9c 100%)',
+              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
               backgroundClip: 'text',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
@@ -137,7 +185,6 @@ export default function LoginPage() {
             Manage content, automate workflows, and build powerful applications with a modern headless CMS.
           </Typography>
 
-          {/* Feature pills */}
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
             {FEATURES.map(f => (
               <Box key={f.label} sx={{
@@ -166,7 +213,6 @@ export default function LoginPage() {
         px: 4,
         position: 'relative',
       }}>
-        {/* Subtle border line */}
         <Box sx={{
           display: { xs: 'none', md: 'block' },
           position: 'absolute', left: 0, top: '10%', bottom: '10%',
@@ -174,26 +220,22 @@ export default function LoginPage() {
           background: 'linear-gradient(180deg, transparent, rgba(255,255,255,0.06) 50%, transparent)',
         }} />
 
-        <Box sx={{
-          width: '100%',
-          maxWidth: 420,
-        }}>
+        <Box sx={{ width: '100%', maxWidth: 420 }}>
           {/* Mobile logo */}
           <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 2, mb: 5, justifyContent: 'center' }}>
             <Box sx={{
               width: 40, height: 40, borderRadius: '12px',
-              background: 'linear-gradient(135deg, #6644ff 0%, #4422cc 100%)',
+              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 4px 16px rgba(102, 68, 255, 0.3)',
+              boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.35)}`,
             }}>
               <Typography sx={{ color: 'white', fontWeight: 800, fontSize: 16 }}>N</Typography>
             </Box>
-            <Typography variant="h6" fontWeight={800} color="white">NexDirect</Typography>
+            <Typography variant="h6" fontWeight={800} color="text.primary">NexDirect</Typography>
           </Box>
 
-          {/* Header */}
           <Box sx={{ mb: 4 }}>
-            <Typography variant="h4" fontWeight={800} color="white" letterSpacing="-0.02em" mb={0.5}>
+            <Typography variant="h4" fontWeight={800} color="text.primary" letterSpacing="-0.02em" mb={0.5}>
               Welcome back
             </Typography>
             <Typography variant="body2" color="text.secondary">
@@ -201,7 +243,6 @@ export default function LoginPage() {
             </Typography>
           </Box>
 
-          {/* Form */}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             <TextField
               fullWidth
@@ -209,11 +250,8 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              slotProps={{
-                input: {
-                  sx: { bgcolor: 'rgba(255,255,255,0.02)' }
-                }
-              }}
+              onKeyDown={e => e.key === 'Enter' && handleLogin()}
+              slotProps={{ input: { sx: { bgcolor: alpha(theme.palette.background.paper, 0.4) } } }}
             />
 
             <TextField
@@ -222,9 +260,10 @@ export default function LoginPage() {
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleLogin()}
               slotProps={{
                 input: {
-                  sx: { bgcolor: 'rgba(255,255,255,0.02)' },
+                  sx: { bgcolor: alpha(theme.palette.background.paper, 0.4) },
                   endAdornment: (
                     <InputAdornment position="end">
                       <IconButton size="small" onClick={() => setShowPassword(!showPassword)} edge="end" sx={{ color: 'text.secondary' }}>
@@ -236,37 +275,16 @@ export default function LoginPage() {
               }}
             />
 
-            <TextField
-              select
-              fullWidth
-              label="Sign in as"
-              value={role || 'admin'}
-              onChange={e => setRole(e.target.value as Role)}
-              slotProps={{
-                input: {
-                  sx: { bgcolor: 'rgba(255,255,255,0.02)' }
-                }
-              }}
-            >
-              {ROLES.map(r => (
-                <MenuItem key={r.value} value={r.value}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: r.color }} />
-                    <Box>
-                      <Typography variant="body2" fontWeight={600}>{r.label}</Typography>
-                      <Typography variant="caption" color="text.secondary" fontSize={11}>{r.desc}</Typography>
-                    </Box>
-                  </Box>
-                </MenuItem>
-              ))}
-            </TextField>
-
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <FormControlLabel
                 control={<Checkbox checked={remember} onChange={e => setRemember(e.target.checked)} size="small" />}
                 label={<Typography variant="body2" color="text.secondary" fontSize={13}>Remember me</Typography>}
               />
-              <Button variant="text" sx={{ fontSize: 13, color: '#6644ff', p: 0, minWidth: 'auto' }}>
+              <Button
+                variant="text"
+                onClick={() => { setForgotOpen(true); setResetEmail(email); }}
+                sx={{ fontSize: 13, color: theme.palette.primary.main, p: 0, minWidth: 'auto' }}
+              >
                 Forgot password?
               </Button>
             </Box>
@@ -283,7 +301,7 @@ export default function LoginPage() {
               fullWidth
               onClick={handleLogin}
               disabled={loading || !email}
-              startIcon={loading ? null : <LogIn size={18} />}
+              startIcon={loading ? <CircularProgress size={18} color="inherit" /> : <LogIn size={18} />}
               sx={{
                 py: 1.5,
                 fontSize: 15,
@@ -307,11 +325,10 @@ export default function LoginPage() {
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
 
-            <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.04)' }}>
-              <Typography variant="caption" color="text.secondary" fontSize={11}>Demo Environment</Typography>
+            <Divider sx={{ my: 1, borderColor: theme.palette.divider }}>
+              <Typography variant="caption" color="text.secondary" fontSize={11}>Quick Login</Typography>
             </Divider>
 
-            {/* Quick role buttons */}
             <Box sx={{ display: 'flex', gap: 1.5 }}>
               {ROLES.map(r => (
                 <Button
@@ -320,14 +337,14 @@ export default function LoginPage() {
                   fullWidth
                   size="small"
                   onClick={() => {
-                    setRole(r.value as Role);
                     setEmail(`${r.value}@example.com`);
+                    setPassword(`${r.value}123`);
                   }}
                   sx={{
                     py: 1,
-                    borderColor: role === r.value ? `${r.color}40` : 'rgba(255,255,255,0.06)',
-                    bgcolor: role === r.value ? `${r.color}08` : 'transparent',
-                    color: role === r.value ? r.color : 'text.secondary',
+                    borderColor: email === `${r.value}@example.com` ? `${r.color}40` : 'rgba(255,255,255,0.06)',
+                    bgcolor: email === `${r.value}@example.com` ? `${r.color}08` : 'transparent',
+                    color: email === `${r.value}@example.com` ? r.color : 'text.secondary',
                     flexDirection: 'column',
                     gap: 0.25,
                     '&:hover': {
@@ -343,7 +360,6 @@ export default function LoginPage() {
             </Box>
           </Box>
 
-          {/* Footer */}
           <Box sx={{ mt: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
             <Lock size={12} style={{ opacity: 0.3 }} />
             <Typography variant="caption" color="text.secondary" fontSize={11}>
@@ -352,6 +368,67 @@ export default function LoginPage() {
           </Box>
         </Box>
       </Box>
+
+      {/* Forgot Password Dialog */}
+      <Dialog open={forgotOpen} onClose={handleCloseForgot} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: '16px' } }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 1 }}>
+          <KeyRound size={20} />
+          Reset Password
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" mb={3}>
+            Enter your email and a new password to reset your account.
+          </Typography>
+
+          {resetMessage && (
+            <Alert severity={resetMessage.type} sx={{ mb: 2, borderRadius: '10px' }} onClose={() => setResetMessage(null)}>
+              {resetMessage.text}
+            </Alert>
+          )}
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              fullWidth
+              label="Email Address"
+              type="email"
+              value={resetEmail}
+              onChange={e => setResetEmail(e.target.value)}
+              size="small"
+            />
+            <TextField
+              fullWidth
+              label="New Password"
+              type="password"
+              value={resetNewPassword}
+              onChange={e => setResetNewPassword(e.target.value)}
+              size="small"
+              helperText="Minimum 6 characters"
+            />
+            <TextField
+              fullWidth
+              label="Confirm New Password"
+              type="password"
+              value={resetConfirmPassword}
+              onChange={e => setResetConfirmPassword(e.target.value)}
+              size="small"
+              error={resetConfirmPassword.length > 0 && resetNewPassword !== resetConfirmPassword}
+              helperText={resetConfirmPassword.length > 0 && resetNewPassword !== resetConfirmPassword ? 'Passwords do not match' : ''}
+              onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 1 }}>
+          <Button onClick={handleCloseForgot} color="inherit">Cancel</Button>
+          <Button
+            onClick={handleResetPassword}
+            variant="contained"
+            disabled={resetLoading || !resetEmail || !resetNewPassword || resetNewPassword !== resetConfirmPassword}
+            startIcon={resetLoading ? <CircularProgress size={16} color="inherit" /> : undefined}
+          >
+            {resetLoading ? 'Resetting...' : 'Reset Password'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

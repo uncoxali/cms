@@ -5,15 +5,15 @@ import { getAuthFromRequest } from '@/lib/auth';
 const VALID_NAME_REGEX = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
 const SYSTEM_TABLES = [
-    'directus_users',
-    'directus_roles',
-    'directus_activity',
-    'directus_files',
-    'directus_folders',
-    'directus_flows',
-    'directus_flow_logs',
-    'directus_settings',
-    'directus_collections_meta',
+    'neurofy_users',
+    'neurofy_roles',
+    'neurofy_activity',
+    'neurofy_files',
+    'neurofy_folders',
+    'neurofy_flows',
+    'neurofy_flow_logs',
+    'neurofy_settings',
+    'neurofy_collections_meta',
 ];
 
 export async function GET(request: NextRequest) {
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
         for (const t of tables) {
             const tableName = t.name;
             const columns = await db.raw(`PRAGMA table_info('${tableName}')`);
-            const meta = await db('directus_collections_meta')
+            const meta = await db('neurofy_collections_meta')
                 .where('collection', tableName)
                 .first()
                 .catch(() => null);
@@ -78,9 +78,11 @@ export async function POST(request: NextRequest) {
         await db.schema.createTable(name, (t) => {
             t.increments('id').primary();
 
+            const RESERVED_COLS = ['id', 'date_created', 'date_updated'];
             if (Array.isArray(fields)) {
                 for (const f of fields) {
                     const fieldName = (f?.name || f?.field || '').toString();
+                    if (RESERVED_COLS.includes(fieldName)) continue;
                     if (!VALID_NAME_REGEX.test(fieldName)) throw new Error(`Invalid field name: ${fieldName}`);
 
                     const fieldType = (f?.type || 'string').toString().toLowerCase();
@@ -126,18 +128,18 @@ export async function POST(request: NextRequest) {
             t.timestamp('date_updated').defaultTo(db.fn.now());
         });
 
-        await db('directus_collections_meta').insert({
+        await db('neurofy_collections_meta').insert({
             collection: name,
             label: label || name,
             icon: icon || 'database',
             description: null,
         });
 
-        await db('directus_activity').insert({
+        await db('neurofy_activity').insert({
             action: 'create',
             user: auth.email,
             user_id: auth.userId,
-            collection: 'directus_collections',
+            collection: 'neurofy_collections',
             item: name,
             meta_json: JSON.stringify({ label: label || name, fields: Array.isArray(fields) ? fields.length : 0 }),
         });

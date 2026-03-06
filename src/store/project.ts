@@ -52,7 +52,7 @@ interface ProjectState {
 
 const DEFAULT_SETTINGS: ProjectSettings = {
     projectName: 'NexDirect CMS',
-    projectDescription: 'A headless content management system inspired by Directus.',
+    projectDescription: 'A headless content management system inspired by Neurofy.',
     projectUrl: 'http://localhost:3000',
     logoUrl: '',
     primaryColor: '#6644ff',

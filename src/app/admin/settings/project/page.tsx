@@ -39,7 +39,19 @@ const LOCALE_OPTIONS = [
 const FONT_OPTIONS = [
   { value: 'Inter', label: 'Inter' },
   { value: 'Roboto', label: 'Roboto' },
+  { value: 'Poppins', label: 'Poppins' },
+  { value: 'Open Sans', label: 'Open Sans' },
+  { value: 'Lato', label: 'Lato' },
+  { value: 'Nunito', label: 'Nunito' },
+  { value: 'Montserrat', label: 'Montserrat' },
+  { value: 'Raleway', label: 'Raleway' },
+  { value: 'Fira Sans', label: 'Fira Sans' },
+  { value: 'Ubuntu', label: 'Ubuntu' },
+  { value: 'Source Sans 3', label: 'Source Sans 3' },
+  { value: 'Noto Sans', label: 'Noto Sans' },
   { value: 'Vazirmatn', label: 'Vazirmatn (فارسی)' },
+  { value: 'Yekan Bakh', label: 'Yekan Bakh (فارسی)' },
+  { value: 'Noto Sans Arabic', label: 'Noto Sans Arabic (عربی)' },
   { value: 'system-ui', label: 'System Default' },
   { value: 'monospace', label: 'Monospace' },
 ];
@@ -318,7 +330,12 @@ export default function ProjectSettingsPage() {
                 >
                   {FONT_OPTIONS.map(f => (
                     <MenuItem key={f.value} value={f.value}>
-                      <Typography sx={{ fontFamily: f.value !== 'system-ui' ? f.value : undefined }}>{f.label}</Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                        <Typography>{f.label}</Typography>
+                        <Typography variant="caption" sx={{ fontFamily: `'${f.value}', sans-serif`, color: 'text.secondary', ml: 2 }}>
+                          Aa Bb Cc 123
+                        </Typography>
+                      </Box>
                     </MenuItem>
                   ))}
                 </TextField>

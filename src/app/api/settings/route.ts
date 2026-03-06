@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { getAuthFromRequest } from '@/lib/auth';
+import { getAuthFromRequest, requireAdmin } from '@/lib/auth';
 
-// GET /api/settings
+// GET /api/settings (admin only)
 export async function GET(request: NextRequest) {
-    const auth = getAuthFromRequest(request);
-    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const check = requireAdmin(getAuthFromRequest(request));
+    if (!check.authorized) return check.response;
 
     const db = getDb();
-    const settings = await db('directus_settings').first();
+    const settings = await db('neurofy_settings').first();
 
     if (!settings) return NextResponse.json({ data: null });
 
@@ -21,10 +21,10 @@ export async function GET(request: NextRequest) {
     });
 }
 
-// PATCH /api/settings
+// PATCH /api/settings (admin only)
 export async function PATCH(request: NextRequest) {
-    const auth = getAuthFromRequest(request);
-    if (!auth?.adminAccess) return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    const check = requireAdmin(getAuthFromRequest(request));
+    if (!check.authorized) return check.response;
 
     const db = getDb();
     const body = await request.json();
@@ -35,15 +35,15 @@ export async function PATCH(request: NextRequest) {
         delete updateData.feature_flags;
     }
 
-    await db('directus_settings').where('id', 1).update(updateData);
+    await db('neurofy_settings').where('id', 1).update(updateData);
 
-    await db('directus_activity').insert({
-        action: 'update', user: auth.email, user_id: auth.userId,
-        collection: 'directus_settings', item: '1',
+    await db('neurofy_activity').insert({
+        action: 'update', user: check.auth.email, user_id: check.auth.userId,
+        collection: 'neurofy_settings', item: '1',
         meta_json: JSON.stringify(body),
     });
 
-    const settings = await db('directus_settings').first();
+    const settings = await db('neurofy_settings').first();
     return NextResponse.json({
         data: {
             ...settings,

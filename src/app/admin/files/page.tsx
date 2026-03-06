@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -25,10 +25,15 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Checkbox from '@mui/material/Checkbox';
+import CircularProgress from '@mui/material/CircularProgress';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
+import LinearProgress from '@mui/material/LinearProgress';
 import { useFilesStore, FileItem } from '@/store/files';
 import { useActivityStore } from '@/store/activity';
 import { useNotificationsStore } from '@/store/notifications';
-import { api } from '@/lib/api';
+import { useConfirm } from '@/components/admin/ConfirmDialog';
+import { useAuthStore } from '@/store/auth';
 import {
   Search, Upload, Grid3X3, List as ListIcon, Star, StarOff,
   Image as ImageIcon, Video, FileText, Music, Archive, File,
@@ -82,17 +87,22 @@ function timeAgo(iso: string): string {
 
 export default function FilesPage() {
   const theme = useTheme();
-  const { files, folders, deleteFile, toggleFavorite, addFile, fetchFiles, deleteFileApi, toggleFavoriteApi } = useFilesStore();
+  const { files, folders, fetchFiles, uploadFile, deleteFileApi, toggleFavoriteApi, loading: storeLoading } = useFilesStore();
   const { addLog } = useActivityStore();
   const { addNotification } = useNotificationsStore();
+  const role = useAuthStore((s) => s.role);
+  const canEdit = role === 'admin' || role === 'editor';
+  const confirm = useConfirm();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
 
-  // Fetch files from API on mount
   useEffect(() => {
     fetchFiles();
   }, [fetchFiles]);
@@ -106,40 +116,70 @@ export default function FilesPage() {
 
   const totalSize = files.reduce((sum, f) => sum + f.size, 0);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     const file = files.find(f => f.id === id);
-    deleteFile(id);
-    setSelectedFile(null);
-    addLog({ action: 'delete', collection: 'directus_files', item: id, user: 'Admin User', meta: { name: file?.name } });
-    addNotification({ title: 'File Deleted', message: `${file?.name} has been removed.` });
+    const ok = await confirm({ title: 'Delete File', message: `Are you sure you want to delete "${file?.name}"? This action cannot be undone.`, confirmText: 'Delete', severity: 'error' });
+    if (!ok) return;
+    try {
+      await deleteFileApi(id);
+      setSelectedFile(null);
+      addNotification({ title: 'File Deleted', message: `${file?.name} has been removed.` });
+      setSnackbar({ open: true, message: 'File deleted successfully', severity: 'success' });
+    } catch {
+      setSnackbar({ open: true, message: 'Failed to delete file', severity: 'error' });
+    }
   };
 
-  const handleUploadMock = () => {
-    const newFile: FileItem = {
-      id: `f_${Date.now()}`,
-      name: `upload-${Date.now().toString(36)}.png`,
-      type: 'image',
-      mimeType: 'image/png',
-      size: Math.floor(Math.random() * 5000000) + 100000,
-      width: 1200,
-      height: 800,
-      folder: 'images',
-      uploadedBy: 'Admin User',
-      uploadedOn: new Date().toISOString(),
-      modifiedOn: new Date().toISOString(),
-      tags: [],
-      isFavorite: false,
-    };
-    addFile(newFile);
-    addLog({ action: 'create', collection: 'directus_files', item: newFile.id, user: 'Admin User', meta: { name: newFile.name } });
-    addNotification({ title: 'File Uploaded', message: `${newFile.name} uploaded successfully.` });
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+
+    setUploading(true);
+    let successCount = 0;
+
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        await uploadFile(formData);
+        successCount++;
+        addNotification({ title: 'File Uploaded', message: `${file.name} uploaded successfully.` });
+      } catch {
+        setSnackbar({ open: true, message: `Failed to upload ${file.name}`, severity: 'error' });
+      }
+    }
+
+    if (successCount > 0) {
+      setSnackbar({ open: true, message: `${successCount} file${successCount > 1 ? 's' : ''} uploaded successfully`, severity: 'success' });
+    }
+    setUploading(false);
+    e.target.value = '';
   };
 
-  const handleBulkDelete = () => {
-    if (confirm(`Delete ${selectedIds.length} files?`)) {
-      selectedIds.forEach(id => deleteFile(id));
-      addLog({ action: 'delete', collection: 'directus_files', item: selectedIds.join(','), user: 'Admin User', meta: { count: selectedIds.length } });
+  const handleToggleFavorite = async (id: string) => {
+    try {
+      await toggleFavoriteApi(id);
+      if (selectedFile?.id === id) {
+        setSelectedFile(prev => prev ? { ...prev, isFavorite: !prev.isFavorite } : null);
+      }
+    } catch {
+      setSnackbar({ open: true, message: 'Failed to update favorite', severity: 'error' });
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const ok = await confirm({ title: 'Delete Multiple Files', message: `Are you sure you want to delete ${selectedIds.length} files? This action cannot be undone.`, confirmText: `Delete ${selectedIds.length} Files`, severity: 'error' });
+    if (!ok) return;
+    try {
+      for (const id of selectedIds) {
+        await deleteFileApi(id);
+      }
+      setSnackbar({ open: true, message: `${selectedIds.length} files deleted`, severity: 'success' });
       setSelectedIds([]);
+    } catch {
+      setSnackbar({ open: true, message: 'Bulk delete failed', severity: 'error' });
     }
   };
 
@@ -149,6 +189,16 @@ export default function FilesPage() {
 
   return (
     <Box sx={{ display: 'flex', height: 'calc(100vh - 120px)', gap: 0 }}>
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        hidden
+        onChange={handleUpload}
+        accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.7z,.txt,.csv"
+      />
+
       {/* Folder Sidebar */}
       <Box sx={{
         width: 220, flexShrink: 0,
@@ -174,7 +224,6 @@ export default function FilesPage() {
           ))}
         </List>
 
-        {/* Storage Usage */}
         <Box sx={{ mt: 'auto', p: 2, borderTop: 1, borderColor: 'divider' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
             <Typography variant="caption" color="text.secondary">Storage</Typography>
@@ -188,21 +237,31 @@ export default function FilesPage() {
 
       {/* Main Content */}
       <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Box>
             <Typography variant="h4" fontWeight={800} letterSpacing="-0.02em">File Library</Typography>
             <Typography variant="body2" color="text.secondary">{files.length} files • {formatSize(totalSize)} total</Typography>
           </Box>
           <Box sx={{ display: 'flex', gap: 1.5 }}>
-            {selectedIds.length > 0 && (
+            {canEdit && selectedIds.length > 0 && (
               <Button variant="outlined" color="error" startIcon={<Trash2 size={16} />} onClick={handleBulkDelete}>
                 Delete ({selectedIds.length})
               </Button>
             )}
-            <Button variant="contained" startIcon={<Upload size={16} />} onClick={handleUploadMock}>Upload</Button>
+            {canEdit && (
+              <Button
+                variant="contained"
+                startIcon={uploading ? <CircularProgress size={16} color="inherit" /> : <Upload size={16} />}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+              >
+                {uploading ? 'Uploading...' : 'Upload'}
+              </Button>
+            )}
           </Box>
         </Box>
+
+        {uploading && <LinearProgress sx={{ mb: 2, borderRadius: 1 }} />}
 
         {/* Toolbar */}
         <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
@@ -242,10 +301,19 @@ export default function FilesPage() {
 
         {/* File Content */}
         <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
-          {filteredFiles.length === 0 ? (
+          {storeLoading && files.length === 0 ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+              <CircularProgress />
+            </Box>
+          ) : filteredFiles.length === 0 ? (
             <Box sx={{ py: 8, textAlign: 'center' }}>
               <File size={48} style={{ opacity: 0.15, marginBottom: 16 }} />
-              <Typography color="text.secondary">No files found.</Typography>
+              <Typography color="text.secondary" mb={2}>No files found.</Typography>
+              {canEdit && (
+                <Button variant="contained" startIcon={<Upload size={16} />} onClick={() => fileInputRef.current?.click()}>
+                  Upload Your First File
+                </Button>
+              )}
             </Box>
           ) : viewMode === 'grid' ? (
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 2 }}>
@@ -269,8 +337,18 @@ export default function FilesPage() {
                       height: 120, bgcolor: `${color}08`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       position: 'relative',
+                      overflow: 'hidden',
                     }}>
-                      <Icon size={36} color={color} style={{ opacity: 0.6 }} />
+                      {file.type === 'image' && file.url ? (
+                        <Box
+                          component="img"
+                          src={file.url}
+                          alt={file.name}
+                          sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <Icon size={36} color={color} style={{ opacity: 0.6 }} />
+                      )}
                       <Box sx={{ position: 'absolute', top: 6, left: 6 }}>
                         <Checkbox
                           size="small"
@@ -317,7 +395,16 @@ export default function FilesPage() {
                         </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <Icon size={16} color={color} />
+                            {file.type === 'image' && file.url ? (
+                              <Box
+                                component="img"
+                                src={file.url}
+                                alt={file.name}
+                                sx={{ width: 28, height: 28, borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }}
+                              />
+                            ) : (
+                              <Icon size={16} color={color} />
+                            )}
                             <Typography variant="body2" fontWeight={500}>{file.name}</Typography>
                             {file.isFavorite && <Star size={12} fill={theme.palette.warning.main} color={theme.palette.warning.main} />}
                           </Box>
@@ -327,12 +414,16 @@ export default function FilesPage() {
                         <TableCell><Typography variant="body2" color="text.secondary">{timeAgo(file.modifiedOn)}</Typography></TableCell>
                         <TableCell>{file.uploadedBy}</TableCell>
                         <TableCell align="right">
-                          <IconButton size="small" onClick={e => { e.stopPropagation(); toggleFavorite(file.id); }}>
-                            {file.isFavorite ? <Star size={14} fill={theme.palette.warning.main} color={theme.palette.warning.main} /> : <StarOff size={14} />}
-                          </IconButton>
-                          <IconButton size="small" color="error" onClick={e => { e.stopPropagation(); handleDelete(file.id); }}>
-                            <Trash2 size={14} />
-                          </IconButton>
+                          {canEdit && (
+                            <>
+                              <IconButton size="small" onClick={e => { e.stopPropagation(); handleToggleFavorite(file.id); }}>
+                                {file.isFavorite ? <Star size={14} fill={theme.palette.warning.main} color={theme.palette.warning.main} /> : <StarOff size={14} />}
+                              </IconButton>
+                              <IconButton size="small" color="error" onClick={e => { e.stopPropagation(); handleDelete(file.id); }}>
+                                <Trash2 size={14} />
+                              </IconButton>
+                            </>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
@@ -356,13 +447,22 @@ export default function FilesPage() {
                 <IconButton size="small" onClick={() => setSelectedFile(null)}><X size={18} /></IconButton>
               </Box>
 
-              {/* Preview */}
               <Box sx={{
                 height: 200, bgcolor: `${color}08`, borderRadius: '12px',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 mb: 3, border: 1, borderColor: 'divider',
+                overflow: 'hidden',
               }}>
-                <Icon size={56} color={color} style={{ opacity: 0.5 }} />
+                {selectedFile.type === 'image' && selectedFile.url ? (
+                  <Box
+                    component="img"
+                    src={selectedFile.url}
+                    alt={selectedFile.name}
+                    sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
+                ) : (
+                  <Icon size={56} color={color} style={{ opacity: 0.5 }} />
+                )}
               </Box>
 
               <Typography variant="h6" fontWeight={700} mb={0.5} sx={{ wordBreak: 'break-all' }}>
@@ -372,7 +472,6 @@ export default function FilesPage() {
 
               <Divider sx={{ mb: 2 }} />
 
-              {/* Metadata */}
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1 }}>
                 {[
                   { icon: HardDrive, label: 'Size', value: formatSize(selectedFile.size) },
@@ -407,21 +506,33 @@ export default function FilesPage() {
                 )}
               </Box>
 
-              {/* Actions */}
-              <Box sx={{ display: 'flex', gap: 1, mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
-                <Button variant="outlined" fullWidth startIcon={selectedFile.isFavorite ? <Star size={14} /> : <StarOff size={14} />}
-                  onClick={() => toggleFavorite(selectedFile.id)} size="small">
-                  {selectedFile.isFavorite ? 'Unfavorite' : 'Favorite'}
-                </Button>
-                <Button variant="outlined" color="error" fullWidth startIcon={<Trash2 size={14} />}
-                  onClick={() => handleDelete(selectedFile.id)} size="small">
-                  Delete
-                </Button>
-              </Box>
+              {canEdit && (
+                <Box sx={{ display: 'flex', gap: 1, mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+                  <Button variant="outlined" fullWidth startIcon={selectedFile.isFavorite ? <Star size={14} /> : <StarOff size={14} />}
+                    onClick={() => handleToggleFavorite(selectedFile.id)} size="small">
+                    {selectedFile.isFavorite ? 'Unfavorite' : 'Favorite'}
+                  </Button>
+                  <Button variant="outlined" color="error" fullWidth startIcon={<Trash2 size={14} />}
+                    onClick={() => handleDelete(selectedFile.id)} size="small">
+                    Delete
+                  </Button>
+                </Box>
+              )}
             </Box>
           );
         })()}
       </Drawer>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

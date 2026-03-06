@@ -21,15 +21,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.icon !== undefined) updateData.icon = body.icon;
     if (body.permissions !== undefined) updateData.permissions_json = JSON.stringify(body.permissions);
 
-    await db('directus_roles').where('id', id).update(updateData);
+    await db('neurofy_roles').where('id', id).update(updateData);
 
-    await db('directus_activity').insert({
+    await db('neurofy_activity').insert({
         action: 'update', user: auth.email, user_id: auth.userId,
-        collection: 'directus_roles', item: id,
+        collection: 'neurofy_roles', item: id,
         meta_json: JSON.stringify(body),
     });
 
-    const role = await db('directus_roles').where('id', id).first();
+    const role = await db('neurofy_roles').where('id', id).first();
     return NextResponse.json({ data: { ...role, permissions: JSON.parse(role.permissions_json || '{}') } });
 }
 
@@ -42,11 +42,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const db = getDb();
 
     // Check if any users have this role
-    const users = await db('directus_users').where('role', id).count('* as count').first();
+    const users = await db('neurofy_users').where('role', id).count('* as count').first();
     if ((users as any)?.count > 0) {
         return NextResponse.json({ error: 'Cannot delete role with assigned users' }, { status: 400 });
     }
 
-    await db('directus_roles').where('id', id).delete();
+    await db('neurofy_roles').where('id', id).delete();
     return NextResponse.json({ success: true });
 }

@@ -53,13 +53,13 @@ export default function FlowsListPage() {
       userUpdated: 'Admin User',
     };
     addFlow(newFlow);
-    addLog({ action: 'create', collection: 'directus_flows', item: newFlow.id, user: 'Admin User', meta: { name: newFlow.name } });
+    addLog({ action: 'create', collection: 'neurofy_flows', item: newFlow.id, user: 'Admin User', meta: { name: newFlow.name } });
     router.push(`/admin/settings/flows/${newFlow.id}`);
   };
 
   const handleToggle = (flowId: string, active: boolean) => {
     updateFlow(flowId, { status: active ? 'active' : 'inactive' });
-    addLog({ action: 'update', collection: 'directus_flows', item: flowId, user: 'Admin User', meta: { status: active ? 'active' : 'inactive' } });
+    addLog({ action: 'update', collection: 'neurofy_flows', item: flowId, user: 'Admin User', meta: { status: active ? 'active' : 'inactive' } });
     addNotification({ title: active ? 'Flow Activated' : 'Flow Deactivated', message: `Flow has been ${active ? 'activated' : 'deactivated'}.` });
   };
 

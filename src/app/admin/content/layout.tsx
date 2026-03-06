@@ -5,9 +5,17 @@ import ContentSidebar from '@/components/admin/ContentSidebar';
 
 export default function ContentLayout({ children }: { children: React.ReactNode }) {
   return (
-    <Box sx={{ display: 'flex', height: '100%', width: '100%', overflow: 'hidden', m: -4 }}>
+    <Box
+      sx={{
+        display: 'flex',
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden',
+        m: -4,
+      }}
+    >
       <ContentSidebar />
-      <Box sx={{ flexGrow: 1, overflow: 'auto', p: 4, height: '100%' }}>
+      <Box sx={{ flexGrow: 1, overflow: 'auto', p: 4 }}>
         {children}
       </Box>
     </Box>

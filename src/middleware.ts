@@ -9,17 +9,20 @@ const JWT_SECRET = new TextEncoder().encode(
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // Paths that don't require authentication
     if (
         pathname === '/admin/login' ||
         pathname.startsWith('/api/auth/login') ||
+        pathname.startsWith('/api/auth/reset-password') ||
+        pathname.startsWith('/api/init') ||
         pathname.startsWith('/_next') ||
         pathname === '/favicon.ico'
     ) {
         return NextResponse.next();
     }
 
-    const token = request.cookies.get('session')?.value;
+    const token =
+        request.headers.get('Authorization')?.replace('Bearer ', '') ||
+        request.cookies.get('session')?.value;
 
     if (!token) {
         if (pathname.startsWith('/api/')) {
@@ -35,7 +38,9 @@ export async function middleware(request: NextRequest) {
         if (pathname.startsWith('/api/')) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
-        return NextResponse.redirect(new URL('/admin/login', request.url));
+        const response = NextResponse.redirect(new URL('/admin/login', request.url));
+        response.cookies.set('session', '', { httpOnly: true, expires: new Date(0), path: '/' });
+        return response;
     }
 }
 

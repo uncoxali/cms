@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { getAuthFromRequest } from '@/lib/auth';
+import { getAuthFromRequest, requireEditor } from '@/lib/auth';
 
 type RouteParams = { params: Promise<Record<string, string>> }
 
@@ -82,7 +82,58 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         const offset = (page - 1) * limit;
         query = query.limit(limit).offset(offset);
 
-        const items = await query;
+        let items = await query;
+
+        // Populate relations: ?populate=* or ?populate=field1,field2
+        const populate = url.searchParams.get('populate');
+        if (populate && items.length > 0) {
+            const relations = await db('neurofy_relations').where('collection', collection).catch(() => []);
+            const fieldsToPopulate = populate === '*'
+                ? relations.map((r: any) => r.field)
+                : populate.split(',').map((f: string) => f.trim());
+
+            for (const rel of relations) {
+                if (!fieldsToPopulate.includes(rel.field)) continue;
+                const relatedIds = [...new Set(items.map((item: any) => item[rel.field]).filter(Boolean))];
+                if (relatedIds.length === 0) continue;
+
+                const relatedItems = await db(rel.related_collection)
+                    .whereIn(rel.related_field || 'id', relatedIds)
+                    .select('*');
+                const relatedMap = new Map(relatedItems.map((ri: any) => [ri[rel.related_field || 'id'], ri]));
+
+                items = items.map((item: any) => ({
+                    ...item,
+                    [`${rel.field}_data`]: relatedMap.get(item[rel.field]) || null,
+                }));
+            }
+        }
+
+        // Apply translations if ?locale=xx is specified
+        const locale = url.searchParams.get('locale');
+        if (locale && items.length > 0) {
+            const itemIds = items.map((item: any) => String(item.id));
+            const translations = await db('neurofy_translations')
+                .where({ collection, locale })
+                .whereIn('item_id', itemIds);
+
+            if (translations.length > 0) {
+                const transMap = new Map<string, Map<string, string>>();
+                for (const tr of translations) {
+                    if (!transMap.has(tr.item_id)) transMap.set(tr.item_id, new Map());
+                    transMap.get(tr.item_id)!.set(tr.field, tr.value);
+                }
+                items = items.map((item: any) => {
+                    const fieldMap = transMap.get(String(item.id));
+                    if (!fieldMap) return item;
+                    const translated = { ...item };
+                    for (const [field, value] of fieldMap) {
+                        translated[field] = value;
+                    }
+                    return translated;
+                });
+            }
+        }
 
         return NextResponse.json({
             data: items,
@@ -98,10 +149,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 }
 
-// POST /api/items/[collection] — create item
+// POST /api/items/[collection] — create item (editor+ only)
 export async function POST(request: NextRequest, { params }: RouteParams) {
-    const auth = getAuthFromRequest(request);
-    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const check = await requireEditor(getAuthFromRequest(request));
+    if (!check.authorized) return check.response;
 
     const { collection } = await params;
     const db = getDb();
@@ -115,13 +166,35 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         if (colNames.includes('date_created')) body.date_created = new Date().toISOString();
         if (colNames.includes('date_updated')) body.date_updated = new Date().toISOString();
 
+        // Validate foreign key references
+        const relations = await db('neurofy_relations').where('collection', collection).catch(() => []);
+        for (const rel of relations) {
+            const value = body[rel.field];
+            if (rel.required && (value === undefined || value === null || value === '')) {
+                return NextResponse.json(
+                    { error: `Field "${rel.field}" is required — you must select a ${rel.related_collection} item` },
+                    { status: 400 }
+                );
+            }
+            if (value !== undefined && value !== null && value !== '') {
+                const exists = await db(rel.related_collection)
+                    .where(rel.related_field || 'id', value).first();
+                if (!exists) {
+                    return NextResponse.json(
+                        { error: `Invalid reference: ${rel.related_collection} with ${rel.related_field || 'id'} = ${value} does not exist` },
+                        { status: 400 }
+                    );
+                }
+            }
+        }
+
         const [id] = await db(collection).insert(body);
 
         // Log activity
-        await db('directus_activity').insert({
+        await db('neurofy_activity').insert({
             action: 'create',
-            user: auth.email,
-            user_id: auth.userId,
+            user: check.auth.email,
+            user_id: check.auth.userId,
             collection,
             item: String(id),
             meta_json: JSON.stringify(body),

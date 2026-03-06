@@ -9,46 +9,62 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Link from 'next/link';
+import { useTheme, alpha } from '@mui/material/styles';
 import {
   Database, Bookmark, Blocks, Settings as SettingsIcon,
-  Shield, FolderOpen, Zap, SlidersHorizontal, Globe
+  Shield, FolderOpen, Zap, SlidersHorizontal, Globe, Radio, User
 } from 'lucide-react';
 
 const SETTINGS_NAV = [
+  { title: 'Profile', icon: User, path: '/admin/settings/profile' },
   { title: 'Data Model', icon: Database, path: '/admin/settings/data-model' },
   { title: 'Project Settings', icon: Globe, path: '/admin/settings/project' },
   { title: 'Roles & Permissions', icon: Shield, path: '/admin/settings/roles' },
   { title: 'Presets', icon: SlidersHorizontal, path: '/admin/settings/presets' },
   { title: 'Files & Storage', icon: FolderOpen, path: '/admin/settings/files' },
   { title: 'Flows', icon: Zap, path: '/admin/settings/flows' },
+  { title: 'WebSocket', icon: Radio, path: '/admin/settings/websockets' },
   { title: 'Extensions', icon: Blocks, path: '/admin/settings/extensions' },
   { title: 'Bookmarks', icon: Bookmark, path: '/admin/settings/bookmarks' },
 ];
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
 
   return (
-    <Box sx={{ display: 'flex', height: '100%', width: '100%', overflow: 'hidden', m: -4 }}>
+    <Box
+      sx={{
+        display: 'flex',
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden',
+        m: -4,
+      }}
+    >
       {/* Sidebar — same style as ContentSidebar */}
       <Box sx={{
         width: 240,
         flexShrink: 0,
-        height: '100%',
-        background: 'linear-gradient(180deg, #13151a 0%, #111318 100%)',
-        borderRight: '1px solid rgba(255, 255, 255, 0.04)',
+        height: '100vh',
+        bgcolor: isDark
+          ? alpha(theme.palette.background.paper, 0.8)
+          : theme.palette.background.paper,
+        borderRight: `1px solid ${theme.palette.divider}`,
         overflowY: 'auto',
         display: 'flex',
         flexDirection: 'column',
+        backdropFilter: isDark ? 'blur(16px)' : 'none',
       }}>
         <Box sx={{
           p: 2,
           display: 'flex',
           alignItems: 'center',
           gap: 1,
-          borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+          borderBottom: `1px solid ${theme.palette.divider}`,
         }}>
-          <SettingsIcon size={16} style={{ opacity: 0.5 }} />
+          <SettingsIcon size={16} style={{ opacity: 0.6 }} />
           <Typography variant="subtitle2" fontWeight={700} fontSize={12}
             letterSpacing="0.05em" textTransform="uppercase" color="text.secondary">
             Settings
@@ -60,15 +76,20 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
             return (
               <Link href={item.path} key={item.title} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <ListItemButton sx={{
-                  borderRadius: '8px',
+                  borderRadius: '10px',
                   mb: 0.5,
                   py: 0.75,
-                  backgroundColor: isActive ? 'rgba(102, 68, 255, 0.08)' : 'transparent',
-                  color: isActive ? '#8B6FFF' : 'text.secondary',
+                  px: 1.25,
+                  backgroundColor: isActive
+                    ? alpha(theme.palette.primary.main, isDark ? 0.2 : 0.08)
+                    : 'transparent',
+                  color: isActive ? theme.palette.primary.main : theme.palette.text.secondary,
                   transition: 'all 200ms ease',
                   '&:hover': {
-                    backgroundColor: isActive ? 'rgba(102, 68, 255, 0.12)' : 'rgba(255,255,255,0.03)',
-                    color: isActive ? '#8B6FFF' : 'text.primary',
+                    backgroundColor: isActive
+                      ? alpha(theme.palette.primary.main, isDark ? 0.28 : 0.12)
+                      : alpha(theme.palette.text.primary, isDark ? 0.06 : 0.04),
+                    color: isActive ? theme.palette.primary.main : theme.palette.text.primary,
                   },
                 }}>
                   <ListItemIcon sx={{ minWidth: 32, color: 'inherit' }}>

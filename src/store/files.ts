@@ -17,6 +17,7 @@ export interface FileItem {
     description?: string;
     tags: string[];
     isFavorite: boolean;
+    url?: string;
 }
 
 export interface Folder {
@@ -76,6 +77,7 @@ export const useFilesStore = create<FilesState>()(
                         description: f.description || undefined,
                         tags: f.tags || [],
                         isFavorite: !!f.is_favorite,
+                        url: f.filename_disk ? `/uploads/${f.filename_disk}` : undefined,
                     }));
                     const folders: Folder[] = (res.folders || []).map((f: any) => ({
                         id: f.id,

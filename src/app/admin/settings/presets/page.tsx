@@ -23,11 +23,13 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useBookmarksStore } from '@/store/bookmarks';
 import { useSchemaStore } from '@/store/schema';
 import { useActivityStore } from '@/store/activity';
+import { useConfirm } from '@/components/admin/ConfirmDialog';
 
 export default function PresetsPage() {
   const { bookmarks, addBookmark, deleteBookmark } = useBookmarksStore();
   const { collections } = useSchemaStore();
   const { addLog } = useActivityStore();
+  const confirm = useConfirm();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({
@@ -58,11 +60,11 @@ export default function PresetsPage() {
     setForm({ name: '', collection: Object.keys(collections)[0] || '', scope: 'global', layout: 'table', pageSize: 20 });
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Delete this preset?')) {
-      deleteBookmark(id);
-      addLog({ action: 'delete', collection: 'presets', item: id, user: 'Admin User' });
-    }
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({ title: 'Delete Preset', message: 'Are you sure you want to delete this preset?', confirmText: 'Delete', severity: 'warning' });
+    if (!ok) return;
+    deleteBookmark(id);
+    addLog({ action: 'delete', collection: 'presets', item: id, user: 'Admin User' });
   };
 
   const globalPresets = bookmarks.filter(b => b.scope === 'global' || b.createdBy === 'system');

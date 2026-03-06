@@ -14,15 +14,15 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         const db = getDb();
 
         const systemTables = [
-            'directus_users',
-            'directus_roles',
-            'directus_activity',
-            'directus_files',
-            'directus_folders',
-            'directus_flows',
-            'directus_flow_logs',
-            'directus_settings',
-            'directus_collections_meta',
+            'neurofy_users',
+            'neurofy_roles',
+            'neurofy_activity',
+            'neurofy_files',
+            'neurofy_folders',
+            'neurofy_flows',
+            'neurofy_flow_logs',
+            'neurofy_settings',
+            'neurofy_collections_meta',
         ];
 
         if (systemTables.includes(name)) {
@@ -33,13 +33,13 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         if (!exists) return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
 
         await db.schema.dropTableIfExists(name);
-        await db('directus_collections_meta').where('collection', name).delete();
+        await db('neurofy_collections_meta').where('collection', name).delete();
 
-        await db('directus_activity').insert({
+        await db('neurofy_activity').insert({
             action: 'delete',
             user: auth.email,
             user_id: auth.userId,
-            collection: 'directus_collections',
+            collection: 'neurofy_collections',
             item: name,
         });
 

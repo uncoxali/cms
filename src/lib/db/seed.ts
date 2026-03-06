@@ -1,16 +1,19 @@
 import { Knex } from 'knex';
 import bcrypt from 'bcryptjs';
+import { collections } from '@/lib/meta/collections';
 
 export async function seed(db: Knex) {
     // Seed only if no roles exist
-    const existingRoles = await db('directus_roles').select('id');
+    const existingRoles = await db('neurofy_roles').select('id');
     if (existingRoles.length > 0) {
         console.log('[DB] Seed skipped — data already exists');
+        // Still ensure content tables exist even if seed was already run
+        await ensureContentTables(db);
         return;
     }
 
     // ---- Roles ----
-    await db('directus_roles').insert([
+    await db('neurofy_roles').insert([
         {
             id: 'role_admin',
             name: 'Administrator',
@@ -49,7 +52,7 @@ export async function seed(db: Knex) {
     const editorHash = await bcrypt.hash('editor123', 10);
     const viewerHash = await bcrypt.hash('viewer123', 10);
 
-    await db('directus_users').insert([
+    await db('neurofy_users').insert([
         {
             id: 'user_admin',
             email: 'admin@example.com',
@@ -80,7 +83,7 @@ export async function seed(db: Knex) {
     ]);
 
     // ---- Settings ----
-    await db('directus_settings').insert({
+    await db('neurofy_settings').insert({
         project_name: 'NexDirect',
         project_description: 'A modern headless CMS',
         project_color: '#6644ff',
@@ -99,15 +102,18 @@ export async function seed(db: Knex) {
     });
 
     // ---- Default Folders ----
-    await db('directus_folders').insert([
+    await db('neurofy_folders').insert([
         { id: 'folder_root', name: 'All Files', parent: null },
         { id: 'folder_images', name: 'Images', parent: 'folder_root' },
         { id: 'folder_documents', name: 'Documents', parent: 'folder_root' },
         { id: 'folder_videos', name: 'Videos', parent: 'folder_root' },
     ]);
 
+    // ---- Create content tables ----
+    await ensureContentTables(db);
+
     // ---- Activity log for seed ----
-    await db('directus_activity').insert({
+    await db('neurofy_activity').insert({
         action: 'login',
         user: 'Admin User',
         user_id: 'user_admin',
@@ -116,5 +122,58 @@ export async function seed(db: Knex) {
         meta_json: JSON.stringify({ source: 'seed' }),
     });
 
-    console.log('[DB] Seed complete — 3 roles, 3 users, settings, folders');
+    console.log('[DB] Seed complete — 3 roles, 3 users, settings, folders, content tables');
+}
+
+function mapFieldTypeToSqlite(type: string): string {
+    switch (type) {
+        case 'number': case 'integer': case 'float': return 'number';
+        case 'boolean': return 'boolean';
+        case 'textarea': case 'rich-text': case 'text': return 'text';
+        case 'datetime': return 'datetime';
+        default: return 'string';
+    }
+}
+
+async function ensureContentTables(db: Knex) {
+    for (const [key, config] of Object.entries(collections)) {
+        const exists = await db.schema.hasTable(key);
+        if (exists) continue;
+
+        await db.schema.createTable(key, (t) => {
+            t.increments('id').primary();
+
+            for (const field of config.fields) {
+                if (field.name === 'id') continue;
+                if (field.group === 'Meta' && field.name !== 'id') continue;
+
+                const sqlType = mapFieldTypeToSqlite(field.type);
+                let col;
+                switch (sqlType) {
+                    case 'number': col = t.float(field.name); break;
+                    case 'boolean': col = t.boolean(field.name); break;
+                    case 'text': col = t.text(field.name); break;
+                    case 'datetime': col = t.timestamp(field.name); break;
+                    default: col = t.string(field.name); break;
+                }
+                if (field.required) col.notNullable();
+                else col.nullable();
+            }
+
+            t.timestamp('date_created').defaultTo(db.fn.now());
+            t.timestamp('date_updated').defaultTo(db.fn.now());
+        });
+
+        // Save metadata
+        const metaExists = await db('neurofy_collections_meta').where('collection', key).first();
+        if (!metaExists) {
+            await db('neurofy_collections_meta').insert({
+                collection: key,
+                label: config.label,
+                icon: config.icon || 'database',
+            });
+        }
+
+        console.log(`[DB] Created content table: ${key} (${config.fields.length} fields)`);
+    }
 }

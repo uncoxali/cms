@@ -12,10 +12,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const db = getDb();
 
-    const user = await db('directus_users')
-        .leftJoin('directus_roles', 'directus_users.role', 'directus_roles.id')
-        .where('directus_users.id', id)
-        .select('directus_users.id', 'directus_users.email', 'directus_users.first_name', 'directus_users.last_name', 'directus_users.status', 'directus_users.role as role_id', 'directus_roles.name as role_name', 'directus_users.last_access')
+    const user = await db('neurofy_users')
+        .leftJoin('neurofy_roles', 'neurofy_users.role', 'neurofy_roles.id')
+        .where('neurofy_users.id', id)
+        .select('neurofy_users.id', 'neurofy_users.email', 'neurofy_users.first_name', 'neurofy_users.last_name', 'neurofy_users.status', 'neurofy_users.role as role_id', 'neurofy_roles.name as role_name', 'neurofy_users.last_access')
         .first();
 
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -35,15 +35,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     delete body.password_hash;
     delete body.password;
 
-    await db('directus_users').where('id', id).update(body);
+    await db('neurofy_users').where('id', id).update(body);
 
-    await db('directus_activity').insert({
+    await db('neurofy_activity').insert({
         action: 'update', user: auth.email, user_id: auth.userId,
-        collection: 'directus_users', item: id,
+        collection: 'neurofy_users', item: id,
         meta_json: JSON.stringify(body),
     });
 
-    const updated = await db('directus_users').where('id', id).first();
+    const updated = await db('neurofy_users').where('id', id).first();
     return NextResponse.json({ data: updated });
 }
 
@@ -57,10 +57,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     if (id === auth.userId) return NextResponse.json({ error: 'Cannot delete yourself' }, { status: 400 });
 
-    await db('directus_users').where('id', id).delete();
-    await db('directus_activity').insert({
+    await db('neurofy_users').where('id', id).delete();
+    await db('neurofy_activity').insert({
         action: 'delete', user: auth.email, user_id: auth.userId,
-        collection: 'directus_users', item: id,
+        collection: 'neurofy_users', item: id,
     });
 
     return NextResponse.json({ success: true });

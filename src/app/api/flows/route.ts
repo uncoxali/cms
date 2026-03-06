@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { getAuthFromRequest } from '@/lib/auth';
+import { getAuthFromRequest, requireAdmin } from '@/lib/auth';
 
-// GET /api/flows — list all flows
+// GET /api/flows — list all flows (admin only)
 export async function GET(request: NextRequest) {
-    const auth = getAuthFromRequest(request);
-    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const check = requireAdmin(getAuthFromRequest(request));
+    if (!check.authorized) return check.response;
 
     const db = getDb();
-    const flows = await db('directus_flows').select('*');
+    const flows = await db('neurofy_flows').select('*');
 
     const data = flows.map((f: any) => ({
         ...f,
@@ -23,14 +23,14 @@ export async function GET(request: NextRequest) {
 
 // POST /api/flows — create flow
 export async function POST(request: NextRequest) {
-    const auth = getAuthFromRequest(request);
-    if (!auth?.adminAccess) return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    const check = requireAdmin(getAuthFromRequest(request));
+    if (!check.authorized) return check.response;
 
     const db = getDb();
     const body = await request.json();
     const id = `flow_${Date.now().toString(36)}`;
 
-    await db('directus_flows').insert({
+    await db('neurofy_flows').insert({
         id,
         name: body.name,
         description: body.description || null,
@@ -43,9 +43,9 @@ export async function POST(request: NextRequest) {
         permission: body.permission || '$full',
     });
 
-    await db('directus_activity').insert({
-        action: 'create', user: auth.email, user_id: auth.userId,
-        collection: 'directus_flows', item: id,
+    await db('neurofy_activity').insert({
+        action: 'create', user: check.auth.email, user_id: check.auth.userId,
+        collection: 'neurofy_flows', item: id,
         meta_json: JSON.stringify({ name: body.name }),
     });
 

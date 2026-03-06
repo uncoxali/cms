@@ -5,6 +5,7 @@ import {
     Users,
     Settings,
     Activity,
+    Globe,
     LucideIcon
 } from 'lucide-react';
 
@@ -54,6 +55,15 @@ export const ExtensionRegistry = {
             icon: Database,
             path: '/admin/content',
             permissionsRequired: ['admin', 'editor', 'viewer'],
+            version: '1.0.0',
+            author: 'Core'
+        },
+        {
+            id: 'pages',
+            name: 'Pages & Routes',
+            icon: Globe,
+            path: '/admin/pages',
+            permissionsRequired: ['admin', 'editor'],
             version: '1.0.0',
             author: 'Core'
         },
