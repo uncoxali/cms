@@ -10,7 +10,7 @@ import Button from '@mui/material/Button';
 import LinearProgress from '@mui/material/LinearProgress';
 import Skeleton from '@mui/material/Skeleton';
 import Link from 'next/link';
-import { useAuthStore } from '@/store/auth';
+import { useAuthStore, type Role } from '@/store/auth';
 import { useSchemaStore } from '@/store/schema';
 import { api } from '@/lib/api';
 import {

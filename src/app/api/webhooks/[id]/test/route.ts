@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthFromRequest } from '@/lib/auth';
 import { testWebhook } from '@/lib/webhooks';
 
-type RouteParams = { params: { id: string } };
+type RouteParams = { params: Promise<Record<string, string>> };
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const auth = getAuthFromRequest(request);
@@ -10,8 +10,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const { id } = await params;
+
   try {
-    const result = await testWebhook(params.id);
+    const result = await testWebhook(id);
     return NextResponse.json(result);
   } catch (e: any) {
     return NextResponse.json(
