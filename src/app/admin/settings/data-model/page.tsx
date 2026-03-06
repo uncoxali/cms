@@ -12,6 +12,9 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
+import Checkbox from '@mui/material/Checkbox';
+import Slide from '@mui/material/Slide';
+import Stack from '@mui/material/Stack';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -27,11 +30,12 @@ import { useConfirm } from '@/components/admin/ConfirmDialog';
 
 export default function DataModelListPage() {
   const router = useRouter();
-  const { collections, createCollection, dropCollection } = useSchemaStore();
+  const { collections, loading, createCollection, dropCollection, bulkDropCollections } = useSchemaStore();
   const { addLog } = useActivityStore();
   const { addNotification } = useNotificationsStore();
   const confirm = useConfirm();
   const [creating, setCreating] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
 
   const collectionsList = Object.keys(collections).map(key => ({
     key,
@@ -74,6 +78,43 @@ export default function DataModelListPage() {
     }
   };
 
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelected(collectionsList.map(c => c.key));
+    } else {
+      setSelected([]);
+    }
+  };
+
+  const handleSelectOne = (key: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelected(prev => 
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    const ok = await confirm({ 
+      title: 'Bulk Delete Collections', 
+      message: `Are you sure you want to delete ${selected.length} collections? This will permanently delete all data and schema for these collections. This cannot be undone.`, 
+      confirmText: `Delete ${selected.length} Collections`, 
+      severity: 'error' 
+    });
+    if (!ok) return;
+
+    try {
+      await bulkDropCollections(selected);
+      addNotification({ title: 'Success', message: `${selected.length} collections deleted successfully.` });
+      setSelected([]);
+    } catch (err: any) {
+      addNotification({ title: 'Error', message: err.message || 'Failed to delete some collections' });
+      // Refresh schema anyway to sync state
+      useSchemaStore.getState().fetchSchema();
+    } finally {
+      // Done
+    }
+  };
+
   const handleDelete = async (key: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const ok = await confirm({ title: 'Delete Collection', message: `Are you sure you want to delete collection "${key}"? All data in this collection will be lost. This cannot be undone.`, confirmText: 'Delete Collection', severity: 'error' });
@@ -104,6 +145,13 @@ export default function DataModelListPage() {
         <Table>
           <TableHead>
             <TableRow>
+              <TableCell padding="checkbox">
+                <Checkbox
+                  indeterminate={selected.length > 0 && selected.length < collectionsList.length}
+                  checked={collectionsList.length > 0 && selected.length === collectionsList.length}
+                  onChange={handleSelectAll}
+                />
+              </TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Collection</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>System Name</TableCell>
               <TableCell sx={{ fontWeight: 600 }} align="center">Fields</TableCell>
@@ -116,9 +164,16 @@ export default function DataModelListPage() {
               <TableRow 
                 key={col.key} 
                 hover 
+                selected={selected.includes(col.key)}
                 sx={{ cursor: 'pointer' }}
                 onClick={() => router.push(`/admin/settings/data-model/${col.key}`)}
               >
+                <TableCell padding="checkbox">
+                  <Checkbox 
+                    checked={selected.includes(col.key)} 
+                    onClick={(e) => handleSelectOne(col.key, e)}
+                  />
+                </TableCell>
                 <TableCell>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 1, bgcolor: 'action.hover' }}>
@@ -146,6 +201,52 @@ export default function DataModelListPage() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Bulk Action Toolbar */}
+      <Slide direction="up" in={selected.length > 0} mountOnEnter unmountOnExit>
+        <Paper
+          elevation={6}
+          sx={{
+            position: 'fixed',
+            bottom: 24,
+            left: 'calc(50% + 110px)', // Adjustment for sidebar
+            transform: 'translateX(-50%)',
+            px: 3,
+            py: 1.5,
+            borderRadius: 3,
+            bgcolor: 'background.paper',
+            border: theme => `1px solid ${theme.palette.divider}`,
+            zIndex: 1000,
+            minWidth: 400,
+          }}
+        >
+          <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+            <Typography variant="subtitle2" fontWeight={600}>
+              {selected.length} collections selected
+            </Typography>
+            <Stack direction="row" spacing={1}>
+              <Button 
+                variant="outlined" 
+                size="small" 
+                onClick={() => setSelected([])}
+                disabled={loading}
+              >
+                Clear
+              </Button>
+              <Button 
+                variant="contained" 
+                color="error" 
+                size="small" 
+                startIcon={<Trash2 size={16} />}
+                onClick={handleBulkDelete}
+                disabled={loading}
+              >
+                {loading ? 'Deleting...' : 'Delete Selected'}
+              </Button>
+            </Stack>
+          </Stack>
+        </Paper>
+      </Slide>
 
       {/* Create Collection Dialog */}
       <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="xs" fullWidth>

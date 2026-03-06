@@ -11,7 +11,8 @@ interface SchemaState {
     // API actions
     fetchSchema: () => Promise<void>;
     createCollection: (key: string, config: CollectionConfig & { fields?: any[] }) => Promise<void>;
-    dropCollection: (key: string) => Promise<void>;
+    dropCollection: (key: string, skipFetch?: boolean) => Promise<void>;
+    bulkDropCollections: (keys: string[]) => Promise<void>;
 
     // API-backed field operations
     addFieldApi: (collectionKey: string, field: FieldConfig & { relation?: any }) => Promise<void>;
@@ -100,9 +101,36 @@ export const useSchemaStore = create<SchemaState>()(
                 await get().fetchSchema();
             },
 
-            dropCollection: async (key) => {
+            dropCollection: async (key, skipFetch = false) => {
                 await api.del(`/schema/${key}`);
-                await get().fetchSchema();
+                set((state) => {
+                    const newCols = { ...state.collections };
+                    delete newCols[key];
+                    return { collections: newCols };
+                });
+                if (!skipFetch) await get().fetchSchema();
+            },
+
+            bulkDropCollections: async (keys) => {
+                set({ loading: true });
+                try {
+                    // Update local state first for immediate UI response
+                    set((state) => {
+                        const newCols = { ...state.collections };
+                        keys.forEach(key => delete newCols[key]);
+                        return { collections: newCols };
+                    });
+
+                    // Perform all deletions
+                    for (const key of keys) {
+                        await api.del(`/schema/${key}`);
+                    }
+
+                    // Fetch schema once at the end
+                    await get().fetchSchema();
+                } finally {
+                    set({ loading: false });
+                }
             },
 
             addFieldApi: async (collectionKey, field) => {

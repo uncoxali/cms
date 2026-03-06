@@ -32,8 +32,32 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         const exists = await db.schema.hasTable(name);
         if (!exists) return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
 
-        await db.schema.dropTableIfExists(name);
+        await db.raw(`DROP TABLE IF EXISTS "${name}"`);
         await db('neurofy_collections_meta').where('collection', name).delete();
+        await db('neurofy_relations')
+            .where('collection', name)
+            .orWhere('related_collection', name)
+            .delete()
+            .catch(() => { });
+
+        await db('neurofy_activity').where('collection', name).delete().catch(() => { });
+        await db('neurofy_translations').where('collection', name).delete().catch(() => { });
+
+        // NEW: Clean up permissions from roles
+        const roles = await db('neurofy_roles').select('id', 'permissions_json');
+        for (const role of roles) {
+            try {
+                const perms = JSON.parse(role.permissions_json || '{}');
+                if (perms[name]) {
+                    delete perms[name];
+                    await db('neurofy_roles')
+                        .where('id', role.id)
+                        .update({ permissions_json: JSON.stringify(perms) });
+                }
+            } catch (e) {
+                console.error(`Failed to update permissions for role ${role.id}:`, e);
+            }
+        }
 
         await db('neurofy_activity').insert({
             action: 'delete',

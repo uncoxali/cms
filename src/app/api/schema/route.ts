@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/schema — introspect all tables and their columns
 export async function GET(request: NextRequest) {
     const auth = getAuthFromRequest(request);

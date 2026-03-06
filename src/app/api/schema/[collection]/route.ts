@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getAuthFromRequest } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 type RouteParams = { params: Promise<Record<string, string>> }
 
 // GET /api/schema/[collection] — introspect single table
@@ -256,7 +258,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             await db('neurofy_relations')
                 .where({ collection, field: body.field_name })
                 .delete()
-                .catch(() => {});
+                .catch(() => { });
 
             await db('neurofy_activity').insert({
                 action: 'delete', user: auth.email, user_id: auth.userId,
@@ -297,15 +299,46 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         }
 
         // Drop main table
-        await db.schema.dropTableIfExists(collection);
+        console.log(`[SCHEMA] Attempting to drop table: ${collection}`);
+        const existsBefore = await db.schema.hasTable(collection);
+        console.log(`[SCHEMA] Table exists before drop: ${existsBefore}`);
 
-        // Clean up metadata and relations referencing this collection
+        await db.raw(`DROP TABLE IF EXISTS "${collection}"`);
+
+        const existsAfter = await db.schema.hasTable(collection);
+        console.log(`[SCHEMA] Table exists after drop: ${existsAfter}`);
+
+        // Clean up metadata
         await db('neurofy_collections_meta').where('collection', collection).delete();
+
+        // Clean up relations referencing this collection (as source or target)
         await db('neurofy_relations')
             .where('collection', collection)
             .orWhere('related_collection', collection)
             .delete()
-            .catch(() => {});
+            .catch(() => { });
+
+        // NEW: Clean up activity logs for this collection
+        await db('neurofy_activity').where('collection', collection).delete().catch(() => { });
+
+        // NEW: Clean up translations for this collection
+        await db('neurofy_translations').where('collection', collection).delete().catch(() => { });
+
+        // NEW: Clean up permissions from roles
+        const roles = await db('neurofy_roles').select('id', 'permissions_json');
+        for (const role of roles) {
+            try {
+                const perms = JSON.parse(role.permissions_json || '{}');
+                if (perms[collection]) {
+                    delete perms[collection];
+                    await db('neurofy_roles')
+                        .where('id', role.id)
+                        .update({ permissions_json: JSON.stringify(perms) });
+                }
+            } catch (e) {
+                console.error(`Failed to update permissions for role ${role.id}:`, e);
+            }
+        }
 
         await db('neurofy_activity').insert({
             action: 'delete',

@@ -109,7 +109,7 @@ export default function Header() {
   return (
     <Box
       sx={{
-        height: 100,
+        height: 60,
         px: 3,
         display: 'flex',
         alignItems: 'center',
