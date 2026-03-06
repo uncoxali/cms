@@ -30,6 +30,7 @@ import Grid from '@mui/material/Grid';
 import { useRolesStore } from '@/store/roles';
 import { useActivityStore } from '@/store/activity';
 import { useNotificationsStore } from '@/store/notifications';
+import { useAuthStore } from '@/store/auth';
 import { api } from '@/lib/api';
 import { useConfirm } from '@/components/admin/ConfirmDialog';
 import {
@@ -59,6 +60,7 @@ const STATUS_COLORS: Record<string, { color: 'success' | 'error' | 'warning'; he
 export default function UsersPage() {
   const router = useRouter();
   const theme = useTheme();
+  const role = useAuthStore((s) => s.role);
   const { roles } = useRolesStore();
   const { addLog } = useActivityStore();
   const { addNotification } = useNotificationsStore();
@@ -76,10 +78,19 @@ export default function UsersPage() {
   const [inviteForm, setInviteForm] = useState({ firstName: '', lastName: '', email: '', roleId: 'role_editor' });
   const [bulkMenuAnchor, setBulkMenuAnchor] = useState<null | HTMLElement>(null);
 
-  // Fetch users from API
+  // Fetch users from API (admins only)
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (role === 'admin') {
+      fetchUsers();
+    }
+  }, [role]);
+
+  // Non-admins should not see this page at all
+  useEffect(() => {
+    if (role && role !== 'admin') {
+      router.replace('/admin/dashboard');
+    }
+  }, [role, router]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -95,6 +106,7 @@ export default function UsersPage() {
         firstName: u.first_name || '',
         lastName: u.last_name || '',
         email: u.email || '',
+        avatar: u.avatar || undefined,
         roleId: roleMap[u.role_name] || 'role_viewer',
         roleName: u.role_name || '',
         status: u.status || 'active',
@@ -194,6 +206,14 @@ export default function UsersPage() {
 
   const pageItems = filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
   const allPageSelected = pageItems.length > 0 && pageItems.every(u => selectedIds.includes(u.id));
+
+  // While role is loading or redirecting, render nothing to avoid flicker
+  if (!role) {
+    return null;
+  }
+  if (role !== 'admin') {
+    return null;
+  }
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -318,8 +338,21 @@ export default function UsersPage() {
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <Avatar sx={{ width: 32, height: 32, fontSize: 13, bgcolor: getRoleColor(user.roleId), fontWeight: 700 }}>
-                        {user.firstName?.[0] || ''}{user.lastName?.[0] || ''}
+                      <Avatar
+                        src={user.avatar || undefined}
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          fontSize: 13,
+                          bgcolor: getRoleColor(user.roleId),
+                          fontWeight: 700,
+                        }}
+                      >
+                        {!user.avatar && (
+                          <>
+                            {user.firstName?.[0] || ''}{user.lastName?.[0] || ''}
+                          </>
+                        )}
                       </Avatar>
                       <Typography variant="body2" fontWeight={600}>
                         {user.firstName} {user.lastName}

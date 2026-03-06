@@ -111,6 +111,7 @@
   },
   "files": {
     "title": "File Library",
+    "onlyImages": "Only image files can be used as avatar.",
     "uploadFile": "Upload File",
     "folders": "Folders",
     "allFiles": "All Files",

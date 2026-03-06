@@ -6,15 +6,23 @@ function deriveRole(adminAccess: any, permissions: any): Role {
     if (adminAccess === true || adminAccess === 1 || adminAccess === '1') return 'admin';
 
     // If permissions is the legacy { _all: { ... } } format
-    if (permissions && !Array.isArray(permissions) && permissions._all) {
-        const all = permissions._all;
+    if (permissions && !Array.isArray(permissions) && (permissions as any)._all) {
+        const all = (permissions as any)._all;
         if (all.create || all.update || all.delete) return 'editor';
         if (all.read) return 'viewer';
     }
 
+    // Normalize new structured format: { collections: [...] }
+    let collectionPerms: any[] = [];
+    if (Array.isArray(permissions)) {
+        collectionPerms = permissions;
+    } else if (permissions && Array.isArray((permissions as any).collections)) {
+        collectionPerms = (permissions as any).collections;
+    }
+
     // If permissions is an array of per-collection permissions
-    if (Array.isArray(permissions) && permissions.length > 0) {
-        const hasWrite = permissions.some((p: any) =>
+    if (collectionPerms.length > 0) {
+        const hasWrite = collectionPerms.some((p: any) =>
             (p.create && p.create !== 'none') ||
             (p.update && p.update !== 'none') ||
             (p.delete && p.delete !== 'none')
@@ -38,13 +46,20 @@ export function hasCollectionAccess(
     if (!perms) return false;
 
     // Legacy _all format
-    if (!Array.isArray(perms) && perms._all) {
-        return !!perms._all[action];
+    if (!Array.isArray(perms) && (perms as any)._all) {
+        return !!(perms as any)._all[action];
     }
 
-    if (!Array.isArray(perms)) return false;
+    // New structured format: { collections: [...], _modules, ... }
+    const collectionPerms: any[] = Array.isArray(perms)
+        ? perms
+        : Array.isArray((perms as any).collections)
+            ? (perms as any).collections
+            : [];
 
-    const collPerm = perms.find((p: any) => p.collection === collection || p.collection === '_all');
+    if (collectionPerms.length === 0) return false;
+
+    const collPerm = collectionPerms.find((p: any) => p.collection === collection || p.collection === '_all');
     if (!collPerm) return false;
 
     return collPerm[action] && collPerm[action] !== 'none';
@@ -85,6 +100,7 @@ interface AuthState {
     logout: () => void;
     setError: (error: string | null) => void;
     setHasHydrated: (v: boolean) => void;
+    updateUserAvatar: (avatar: string | null) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -192,6 +208,8 @@ export const useAuthStore = create<AuthState>()(
             },
 
             setError: (error) => set({ error }),
+            updateUserAvatar: (avatar: string | null) =>
+                set((state) => state.user ? { user: { ...state.user, avatar: avatar || undefined } } : state),
         }),
         {
             name: 'neurofy-auth-storage',

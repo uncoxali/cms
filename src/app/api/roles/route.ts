@@ -39,6 +39,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const id = `role_${Date.now().toString(36)}`;
 
+    const rawPerms = body.permissions || [];
+    const permissionsPayload =
+        Array.isArray(rawPerms)
+            ? { collections: rawPerms, _modules: {}, _api: {}, _pages: {} }
+            : {
+                collections: Array.isArray(rawPerms.collections) ? rawPerms.collections : [],
+                _modules: rawPerms._modules || {},
+                _api: rawPerms._api || {},
+                _pages: rawPerms._pages || {},
+            };
+
     await db('neurofy_roles').insert({
         id,
         name: body.name,
@@ -46,7 +57,7 @@ export async function POST(request: NextRequest) {
         admin_access: body.admin_access || false,
         app_access: body.app_access !== false,
         icon: body.icon || 'supervised_user_circle',
-        permissions_json: JSON.stringify(body.permissions || {}),
+        permissions_json: JSON.stringify(permissionsPayload),
     });
 
     await db('neurofy_activity').insert({

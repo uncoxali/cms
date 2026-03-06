@@ -109,7 +109,7 @@ export default function Header() {
   return (
     <Box
       sx={{
-        height: 60,
+        height: 100,
         px: 3,
         display: 'flex',
         alignItems: 'center',
@@ -461,6 +461,7 @@ export default function Header() {
               }}
             >
               <Avatar
+                src={user.avatar || undefined}
                 sx={{
                   width: 32,
                   height: 32,
@@ -470,7 +471,7 @@ export default function Header() {
                   color: '#fff',
                 }}
               >
-                {user.name.charAt(0).toUpperCase()}
+                {!user.avatar && user.name.charAt(0).toUpperCase()}
               </Avatar>
               <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
                 <Typography fontWeight={600} fontSize={13} color='text.primary' lineHeight={1.3}>
@@ -499,6 +500,7 @@ export default function Header() {
                 <Box sx={{ px: 2.5, py: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
                     <Avatar
+                      src={user.avatar || undefined}
                       sx={{
                         width: 40,
                         height: 40,
@@ -508,7 +510,7 @@ export default function Header() {
                         color: '#fff',
                       }}
                     >
-                      {user.name.charAt(0).toUpperCase()}
+                      {!user.avatar && user.name.charAt(0).toUpperCase()}
                     </Avatar>
                     <Box>
                       <Typography fontWeight={700} fontSize={14} lineHeight={1.3}>

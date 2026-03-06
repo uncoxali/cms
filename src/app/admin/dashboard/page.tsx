@@ -77,6 +77,10 @@ export default function DashboardPage() {
   const allCollections = Object.entries(collections);
   const roleLabel = role === 'admin' ? 'Administrator' : role === 'editor' ? 'Editor' : 'Viewer';
 
+  const isAdmin = role === 'admin';
+  const isEditor = role === 'editor';
+  const isViewer = role === 'viewer';
+
   const getStatValue = (id: string) => {
     if (!stats) return '—';
     switch (id) {
@@ -105,6 +109,23 @@ export default function DashboardPage() {
     return `${(bytes / 1073741824).toFixed(2)} GB`;
   };
 
+  const visibleStatCards = STAT_CARDS.filter(card => {
+    if (isAdmin) return true;
+    if (isEditor) {
+      // Editor: hide total users
+      return card.id !== 'users';
+    }
+    // Viewer: only content & activity
+    return card.id === 'items' || card.id === 'activity';
+  });
+
+  const quickActions = [
+    { id: 'createItem', label: 'Create Item', icon: Plus, href: '/admin/content', color: '#3B82F6', roles: ['admin', 'editor'] },
+    { id: 'uploadFile', label: 'Upload File', icon: Upload, href: '/admin/files', color: '#22C55E', roles: ['admin', 'editor'] },
+    { id: 'inviteUser', label: 'Invite User', icon: UserPlus, href: '/admin/users', color: '#8B5CF6', roles: ['admin'] },
+    { id: 'viewFlows', label: 'View Flows', icon: Zap, href: '/admin/settings/flows', color: '#F59E0B', roles: ['admin', 'editor'] },
+  ].filter(action => (action.roles as (Role | null)[]).includes(role as any));
+
   return (
     <Box>
       <Box sx={{ mb: 4 }}>
@@ -114,11 +135,16 @@ export default function DashboardPage() {
         <Typography variant="body2" color="text.secondary">
           Logged in as <strong>{roleLabel}</strong> — here&apos;s what&apos;s happening with your project today.
         </Typography>
+        {!isAdmin && (
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+            Your dashboard is tailored to your permissions. Some admin-only metrics and actions are hidden.
+          </Typography>
+        )}
       </Box>
 
       {/* Stat Cards */}
       <Grid container spacing={2.5} sx={{ mb: 4 }}>
-        {STAT_CARDS.map(card => (
+        {visibleStatCards.map(card => (
           <Grid size={{ xs: 12, sm: 6, md: 3 }} key={card.id}>
             <Paper sx={{
               p: 3,
@@ -271,12 +297,12 @@ export default function DashboardPage() {
                 <Typography variant="subtitle1" fontWeight={700}>Quick Actions</Typography>
               </Box>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {[
-                  { label: 'Create Item', icon: Plus, href: '/admin/content', color: '#3B82F6' },
-                  { label: 'Upload File', icon: Upload, href: '/admin/files', color: '#22C55E' },
-                  { label: 'Invite User', icon: UserPlus, href: '/admin/users', color: '#8B5CF6' },
-                  { label: 'View Flows', icon: Zap, href: '/admin/settings/flows', color: '#F59E0B' },
-                ].map(action => (
+                {quickActions.length === 0 && (
+                  <Typography variant="body2" color="text.secondary">
+                    You have view-only access. Ask an administrator if you need more permissions.
+                  </Typography>
+                )}
+                {quickActions.map(action => (
                   <Link key={action.label} href={action.href} style={{ textDecoration: 'none' }}>
                     <Box sx={{
                       display: 'flex', alignItems: 'center', gap: 1.5,

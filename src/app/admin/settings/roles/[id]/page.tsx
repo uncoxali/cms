@@ -104,7 +104,7 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
 
   // Load existing access settings from role permissions
   useEffect(() => {
-    const perms = role.permissions as any;
+    const perms = (role as any).rawPermissions || {};
     // Module access — check _modules key
     const mods: Record<string, boolean> = {};
     const savedModules = (perms as any)?._modules || {};
@@ -144,12 +144,14 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
   }, []);
 
   const handleSave = async () => {
-    // Build unified permissions: collection permissions + _modules + _api + _pages
+    // Build unified permissions payload: collections + _modules + _api + _pages
     const collectionPerms = role.permissions.filter((p: any) => !p.collection?.startsWith('_'));
-    const fullPermissions: any = [...collectionPerms];
-    (fullPermissions as any)._modules = moduleAccess;
-    (fullPermissions as any)._api = apiAccess;
-    (fullPermissions as any)._pages = pageAccess;
+    const fullPermissions: any = {
+      collections: collectionPerms,
+      _modules: moduleAccess,
+      _api: apiAccess,
+      _pages: pageAccess,
+    };
 
     await updateRole(roleId, {
       ...form,

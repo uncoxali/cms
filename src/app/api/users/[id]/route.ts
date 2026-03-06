@@ -15,7 +15,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const user = await db('neurofy_users')
         .leftJoin('neurofy_roles', 'neurofy_users.role', 'neurofy_roles.id')
         .where('neurofy_users.id', id)
-        .select('neurofy_users.id', 'neurofy_users.email', 'neurofy_users.first_name', 'neurofy_users.last_name', 'neurofy_users.status', 'neurofy_users.role as role_id', 'neurofy_roles.name as role_name', 'neurofy_users.last_access')
+        .select(
+            'neurofy_users.id',
+            'neurofy_users.email',
+            'neurofy_users.first_name',
+            'neurofy_users.last_name',
+            'neurofy_users.status',
+            'neurofy_users.avatar',
+            'neurofy_users.role as role_id',
+            'neurofy_roles.name as role_name',
+            'neurofy_users.last_access'
+        )
         .first();
 
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });

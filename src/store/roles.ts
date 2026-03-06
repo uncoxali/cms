@@ -24,6 +24,7 @@ export interface Role {
     adminAccess: boolean;
     userCount: number;
     permissions: PermissionRule[];
+    rawPermissions?: any;
 }
 
 interface RolesState {
@@ -37,22 +38,29 @@ interface RolesState {
 }
 
 function mapDbRole(r: any): Role {
-    // Parse permissions: DB stores as array or object, normalize to PermissionRule[]
+    // Parse permissions: DB stores as array or structured object, normalize to PermissionRule[]
+    const raw = r.permissions;
     let permissions: PermissionRule[] = [];
-    if (Array.isArray(r.permissions)) {
-        permissions = r.permissions;
-    } else if (r.permissions && typeof r.permissions === 'object') {
-        // Legacy format: { collectionName: { create, read, update, delete } }
-        permissions = Object.entries(r.permissions)
-            .filter(([k]) => k !== '_all')
-            .map(([collection, perms]: [string, any]) => ({
-                collection,
-                create: perms.create ? 'full' : 'none' as PermissionAccess,
-                read: perms.read ? 'full' : 'none' as PermissionAccess,
-                update: perms.update ? 'full' : 'none' as PermissionAccess,
-                delete: perms.delete ? 'full' : 'none' as PermissionAccess,
-                share: 'none' as PermissionAccess,
-            }));
+
+    if (Array.isArray(raw)) {
+        permissions = raw;
+    } else if (raw && typeof raw === 'object') {
+        // New structured format: { collections: PermissionRule[], _modules, _api, _pages }
+        if (Array.isArray((raw as any).collections)) {
+            permissions = (raw as any).collections;
+        } else {
+            // Legacy format: { collectionName: { create, read, update, delete } }
+            permissions = Object.entries(raw)
+                .filter(([k]) => k !== '_all')
+                .map(([collection, perms]: [string, any]) => ({
+                    collection,
+                    create: perms.create ? 'full' : 'none' as PermissionAccess,
+                    read: perms.read ? 'full' : 'none' as PermissionAccess,
+                    update: perms.update ? 'full' : 'none' as PermissionAccess,
+                    delete: perms.delete ? 'full' : 'none' as PermissionAccess,
+                    share: 'none' as PermissionAccess,
+                }));
+        }
     }
 
     return {
@@ -63,6 +71,7 @@ function mapDbRole(r: any): Role {
         adminAccess: !!r.admin_access,
         userCount: r.user_count || 0,
         permissions,
+        rawPermissions: raw,
     };
 }
 

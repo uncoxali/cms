@@ -19,7 +19,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.admin_access !== undefined) updateData.admin_access = body.admin_access;
     if (body.app_access !== undefined) updateData.app_access = body.app_access;
     if (body.icon !== undefined) updateData.icon = body.icon;
-    if (body.permissions !== undefined) updateData.permissions_json = JSON.stringify(body.permissions);
+    if (body.permissions !== undefined) {
+        let perms = body.permissions;
+        if (Array.isArray(perms)) {
+            perms = { collections: perms, _modules: {}, _api: {}, _pages: {} };
+        }
+        updateData.permissions_json = JSON.stringify(perms);
+    }
 
     await db('neurofy_roles').where('id', id).update(updateData);
 
