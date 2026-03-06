@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { runMigrations } from '@/lib/db/migrate';
 import { getAuthFromRequest, requireEditor } from '@/lib/auth';
 
 // GET /api/pages — list all pages
@@ -8,6 +9,7 @@ export async function GET(request: NextRequest) {
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const db = getDb();
+    await runMigrations(db);
     const url = new URL(request.url);
     const status = url.searchParams.get('status');
     const parent = url.searchParams.get('parent_id');
@@ -39,6 +41,7 @@ export async function POST(request: NextRequest) {
     if (!check.authorized) return check.response;
 
     const db = getDb();
+    await runMigrations(db);
     const body = await request.json();
 
     try {

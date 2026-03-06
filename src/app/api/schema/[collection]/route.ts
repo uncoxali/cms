@@ -281,13 +281,31 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const db = getDb();
 
     try {
-        const systemTables = ['neurofy_users', 'neurofy_roles', 'neurofy_activity', 'neurofy_files', 'neurofy_folders', 'neurofy_flows', 'neurofy_flow_logs', 'neurofy_settings', 'neurofy_collections_meta'];
+        const systemTables = [
+            'neurofy_users',
+            'neurofy_roles',
+            'neurofy_activity',
+            'neurofy_files',
+            'neurofy_folders',
+            'neurofy_flows',
+            'neurofy_flow_logs',
+            'neurofy_settings',
+            'neurofy_collections_meta',
+        ];
         if (systemTables.includes(collection)) {
             return NextResponse.json({ error: 'Cannot delete system collections' }, { status: 403 });
         }
 
+        // Drop main table
         await db.schema.dropTableIfExists(collection);
+
+        // Clean up metadata and relations referencing this collection
         await db('neurofy_collections_meta').where('collection', collection).delete();
+        await db('neurofy_relations')
+            .where('collection', collection)
+            .orWhere('related_collection', collection)
+            .delete()
+            .catch(() => {});
 
         await db('neurofy_activity').insert({
             action: 'delete',

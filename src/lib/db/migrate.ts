@@ -113,6 +113,34 @@ export async function runMigrations(db: Knex) {
         });
     }
 
+    // ---- neurofy_webhooks ----
+    if (!(await db.schema.hasTable('neurofy_webhooks'))) {
+        await db.schema.createTable('neurofy_webhooks', (t) => {
+            t.string('id').primary();
+            t.string('name').notNullable();
+            t.string('url').notNullable();
+            t.text('events_json').defaultTo('[]'); // JSON array of event names
+            t.string('secret').notNullable();
+            t.timestamp('last_triggered_at').nullable();
+            t.timestamp('created_at').defaultTo(db.fn.now());
+        });
+    }
+
+    // ---- neurofy_webhook_logs ----
+    if (!(await db.schema.hasTable('neurofy_webhook_logs'))) {
+        await db.schema.createTable('neurofy_webhook_logs', (t) => {
+            t.increments('id').primary();
+            t.string('webhook_id')
+                .references('id')
+                .inTable('neurofy_webhooks')
+                .onDelete('CASCADE');
+            t.integer('status').notNullable();        // HTTP status or 0 on network error
+            t.text('request_body').notNullable();     // JSON payload
+            t.text('response_body').notNullable();    // raw response / error text
+            t.timestamp('timestamp').defaultTo(db.fn.now());
+        });
+    }
+
     // ---- neurofy_settings ----
     if (!(await db.schema.hasTable('neurofy_settings'))) {
         await db.schema.createTable('neurofy_settings', (t) => {

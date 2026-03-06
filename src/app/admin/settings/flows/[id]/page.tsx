@@ -78,14 +78,35 @@ export default function FlowEditorPage({ params }: { params: Promise<{ id: strin
   const router = useRouter();
   const theme = useTheme();
 
-  const { flows, updateFlow, deleteFlow, addOperation, updateOperation, deleteOperation, addRunLog, runLogs } = useFlowsStore();
+  const { flows, updateFlow, deleteFlow, addOperation, updateOperation, deleteOperation, addRunLog, runLogs, fetchFlowDetail } = useFlowsStore();
   const { collections } = useSchemaStore();
   const { addLog } = useActivityStore();
   const { addNotification } = useNotificationsStore();
   const confirm = useConfirm();
 
   const flow = flows.find(f => f.id === flowId);
-  if (!flow) { notFound(); }
+
+  const [initializing, setInitializing] = useState(!flow);
+
+  useEffect(() => {
+    if (!flow) {
+      fetchFlowDetail(flowId).finally(() => setInitializing(false));
+    } else {
+      setInitializing(false);
+    }
+  }, [flow, flowId, fetchFlowDetail]);
+
+  if (initializing) {
+    return (
+      <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Typography variant="body2" color="text.secondary">Loading flow…</Typography>
+      </Box>
+    );
+  }
+
+  if (!flow) {
+    notFound();
+  }
 
   // Panel state: which panel is open on the right
   type PanelMode = 'none' | 'trigger' | 'operation' | 'settings' | 'history';

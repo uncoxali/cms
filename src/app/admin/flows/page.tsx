@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
@@ -21,8 +22,13 @@ import { Plus, Settings, Trash2, Activity } from 'lucide-react';
 export default function FlowsListPage() {
   const router = useRouter();
   const flows = useFlowsStore(state => state.flows);
+  const fetchFlows = useFlowsStore(state => state.fetchFlows);
   const deleteFlow = useFlowsStore(state => state.deleteFlow);
   const updateFlow = useFlowsStore(state => state.updateFlow);
+
+  useEffect(() => {
+    fetchFlows();
+  }, [fetchFlows]);
 
   const toggleActive = (id: string) => {
     const flow = flows.find(f => f.id === id);
