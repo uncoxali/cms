@@ -7,7 +7,6 @@ import Paper from '@mui/material/Paper';
 import Grid from '@mui/material/Grid';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
-import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
@@ -29,13 +28,23 @@ import {
   ArrowLeft, Save, Trash2, Shield, Globe, Database,
   LayoutDashboard, FolderOpen, Users, Settings, Activity,
   Zap, FileText, Eye, EyeOff, Lock, Unlock, Check, X,
+  Columns3, Filter, AlertTriangle,
 } from 'lucide-react';
+import {
+  FieldPermissionsEditor,
+  ItemPermissionsEditor,
+  ValidationRulesEditor,
+} from '@/components/admin/permissions';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import Select from '@mui/material/Select';
 import { notFound, useRouter } from 'next/navigation';
 import { useRolesStore, PermissionAccess } from '@/store/roles';
 import { useSchemaStore } from '@/store/schema';
 import { useActivityStore } from '@/store/activity';
 import { useNotificationsStore } from '@/store/notifications';
 import { useConfirm } from '@/components/admin/ConfirmDialog';
+import { Toggle } from '@/components/admin/Toggle';
 import { api } from '@/lib/api';
 import { ExtensionRegistry } from '@/lib/meta/registry';
 
@@ -101,6 +110,9 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
     { key: 'relations', label: 'Relations API', desc: '/api/relations — Relation metadata' },
   ];
   const [apiAccess, setApiAccess] = useState<Record<string, boolean>>({});
+
+  // Field/Item permissions state
+  const [selectedCollection, setSelectedCollection] = useState<string>('');
 
   // Load existing access settings from role permissions
   useEffect(() => {
@@ -229,6 +241,13 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
   const actions = ['create', 'read', 'update', 'delete'];
   const isDark = theme.palette.mode === 'dark';
 
+  // Set default collection for permissions tabs
+  useEffect(() => {
+    if (collectionKeys.length > 0 && !selectedCollection) {
+      setSelectedCollection(collectionKeys[0]);
+    }
+  }, [collectionKeys, selectedCollection]);
+
   return (
     <Box sx={{ height: '100%', overflow: 'auto' }}>
       {/* Header */}
@@ -258,6 +277,9 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
           <Tab icon={<Globe size={16} />} iconPosition="start" label="Pages" sx={{ minHeight: 48 }} />
           <Tab icon={<LayoutDashboard size={16} />} iconPosition="start" label="Modules" sx={{ minHeight: 48 }} />
           <Tab icon={<Zap size={16} />} iconPosition="start" label="APIs" sx={{ minHeight: 48 }} />
+          <Tab icon={<Columns3 size={16} />} iconPosition="start" label="Field Permissions" sx={{ minHeight: 48 }} />
+          <Tab icon={<Filter size={16} />} iconPosition="start" label="Item Permissions" sx={{ minHeight: 48 }} />
+          <Tab icon={<AlertTriangle size={16} />} iconPosition="start" label="Validation" sx={{ minHeight: 48 }} />
         </Tabs>
       </Box>
 
@@ -273,18 +295,20 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
               <TextField fullWidth multiline rows={3} label="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-              <FormControlLabel
-                control={<Switch checked={form.appAccess} onChange={e => setForm({ ...form, appAccess: e.target.checked })} />}
+              <Toggle
+                checked={form.appAccess}
+                onChange={(checked) => setForm({ ...form, appAccess: checked })}
                 label="App Access"
+                description="Allow login to admin panel"
               />
-              <Typography variant="caption" color="text.secondary" display="block" ml={6}>Allow login to admin panel.</Typography>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-              <FormControlLabel
-                control={<Switch checked={form.adminAccess} onChange={e => setForm({ ...form, adminAccess: e.target.checked })} />}
+              <Toggle
+                checked={form.adminAccess}
+                onChange={(checked) => setForm({ ...form, adminAccess: checked })}
                 label="Admin Access"
+                description="Full unrestricted access. Overrides all settings."
               />
-              <Typography variant="caption" color="text.secondary" display="block" ml={6}>Full unrestricted access. Overrides all settings.</Typography>
             </Grid>
           </Grid>
         </Paper>
@@ -392,10 +416,9 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
                           {page.show_in_nav ? <Chip icon={<Eye size={12} />} label="Yes" size="small" color="info" variant="outlined" /> : <Chip icon={<EyeOff size={12} />} label="No" size="small" variant="outlined" />}
                         </TableCell>
                         <TableCell align="center">
-                          <Switch
+                          <Toggle
                             checked={hasAccess}
-                            onChange={e => setPageAccess({ ...pageAccess, [page.id]: e.target.checked })}
-                            color="success"
+                            onChange={(checked) => setPageAccess({ ...pageAccess, [page.id]: checked })}
                           />
                         </TableCell>
                       </TableRow>
@@ -448,10 +471,9 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
                     <Typography variant="body2" fontWeight={600} sx={{ color: allowed ? 'text.primary' : 'text.disabled' }}>{mod.name}</Typography>
                     <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>{mod.path}</Typography>
                   </Box>
-                  <Switch
+                  <Toggle
                     checked={allowed}
-                    onChange={e => setModuleAccess({ ...moduleAccess, [mod.id]: e.target.checked })}
-                    color="success"
+                    onChange={(checked) => setModuleAccess({ ...moduleAccess, [mod.id]: checked })}
                   />
                 </Paper>
               );
@@ -498,10 +520,9 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
                         <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>{sec.desc}</Typography>
                       </TableCell>
                       <TableCell align="center">
-                        <Switch
+                        <Toggle
                           checked={allowed}
-                          onChange={e => setApiAccess({ ...apiAccess, [sec.key]: e.target.checked })}
-                          color="success"
+                          onChange={(checked) => setApiAccess({ ...apiAccess, [sec.key]: checked })}
                         />
                       </TableCell>
                     </TableRow>
@@ -510,6 +531,114 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
               </TableBody>
             </Table>
           </TableContainer>
+        </Paper>
+      )}
+
+      {/* ── Field Permissions Tab ── */}
+      {activeTab === 5 && (
+        <Paper sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Box>
+              <Typography variant="h6" fontWeight={600}>Field-Level Permissions</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Control which fields users can read and write for each collection.
+              </Typography>
+            </Box>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel>Collection</InputLabel>
+              <Select
+                value={selectedCollection}
+                label="Collection"
+                onChange={(e) => setSelectedCollection(e.target.value)}
+              >
+                {collectionKeys.map((col) => (
+                  <MenuItem key={col} value={col}>
+                    {collections[col].label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+
+          {selectedCollection && (
+            <FieldPermissionsEditor
+              roleId={roleId}
+              collection={selectedCollection}
+              disabled={form.adminAccess}
+            />
+          )}
+        </Paper>
+      )}
+
+      {/* ── Item Permissions Tab ── */}
+      {activeTab === 6 && (
+        <Paper sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Box>
+              <Typography variant="h6" fontWeight={600}>Item-Level Permissions</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Define filter rules to restrict which items users can access.
+              </Typography>
+            </Box>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel>Collection</InputLabel>
+              <Select
+                value={selectedCollection}
+                label="Collection"
+                onChange={(e) => setSelectedCollection(e.target.value)}
+              >
+                {collectionKeys.map((col) => (
+                  <MenuItem key={col} value={col}>
+                    {collections[col].label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+
+          {selectedCollection && (
+            <ItemPermissionsEditor
+              roleId={roleId}
+              collection={selectedCollection}
+              disabled={form.adminAccess}
+            />
+          )}
+        </Paper>
+      )}
+
+      {/* ── Validation Rules Tab ── */}
+      {activeTab === 7 && (
+        <Paper sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Box>
+              <Typography variant="h6" fontWeight={600}>Field Validation Rules</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Define validation rules to enforce data quality when users create or edit items.
+              </Typography>
+            </Box>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel>Collection</InputLabel>
+              <Select
+                value={selectedCollection}
+                label="Collection"
+                onChange={(e) => setSelectedCollection(e.target.value)}
+              >
+                {collectionKeys.map((col) => (
+                  <MenuItem key={col} value={col}>
+                    {collections[col].label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+
+          {selectedCollection && (
+            <ValidationRulesEditor
+              roleId={roleId}
+              collection={selectedCollection}
+              disabled={form.adminAccess}
+            />
+          )}
         </Paper>
       )}
     </Box>

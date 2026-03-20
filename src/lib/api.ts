@@ -8,7 +8,6 @@ class ApiClient {
     }
 
     getToken(): string | null {
-        // Try from memory first, then localStorage
         if (this.token) return this.token;
         if (typeof window !== 'undefined') {
             const stored = localStorage.getItem('nexdirect-token');
@@ -27,12 +26,29 @@ class ApiClient {
         return h;
     }
 
+    private async handleResponse<T>(res: Response): Promise<T> {
+        const contentType = res.headers.get('content-type');
+        const isJson = contentType?.includes('application/json');
+        
+        if (!res.ok) {
+            if (isJson) {
+                const data = await res.json();
+                throw new Error(data.error || res.statusText);
+            }
+            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        
+        if (isJson) {
+            return res.json();
+        }
+        return {} as T;
+    }
+
     async get<T = any>(path: string, params?: Record<string, string>): Promise<T> {
         const url = new URL(`${API_BASE}${path}`, window.location.origin);
         if (params) Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
         const res = await fetch(url.toString(), { headers: this.headers() });
-        if (!res.ok) throw new Error((await res.json()).error || res.statusText);
-        return res.json();
+        return this.handleResponse<T>(res);
     }
 
     async post<T = any>(path: string, body?: any): Promise<T> {
@@ -41,8 +57,7 @@ class ApiClient {
             headers: this.headers({ 'Content-Type': 'application/json' }),
             body: body ? JSON.stringify(body) : undefined,
         });
-        if (!res.ok) throw new Error((await res.json()).error || res.statusText);
-        return res.json();
+        return this.handleResponse<T>(res);
     }
 
     async patch<T = any>(path: string, body: any): Promise<T> {
@@ -51,8 +66,7 @@ class ApiClient {
             headers: this.headers({ 'Content-Type': 'application/json' }),
             body: JSON.stringify(body),
         });
-        if (!res.ok) throw new Error((await res.json()).error || res.statusText);
-        return res.json();
+        return this.handleResponse<T>(res);
     }
 
     async del<T = any>(path: string): Promise<T> {
@@ -60,8 +74,7 @@ class ApiClient {
             method: 'DELETE',
             headers: this.headers(),
         });
-        if (!res.ok) throw new Error((await res.json()).error || res.statusText);
-        return res.json();
+        return this.handleResponse<T>(res);
     }
 
     async upload(path: string, formData: FormData): Promise<any> {
@@ -70,8 +83,7 @@ class ApiClient {
             headers: { Authorization: `Bearer ${this.getToken()}` },
             body: formData,
         });
-        if (!res.ok) throw new Error((await res.json()).error || res.statusText);
-        return res.json();
+        return this.handleResponse(res);
     }
 }
 

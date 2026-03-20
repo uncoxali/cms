@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { api } from '@/lib/api';
+import { ThemePreset } from '@/lib/themes';
 
 export interface ProjectSettings {
     projectName: string;
@@ -25,10 +26,12 @@ export interface ProjectSettings {
         extensions: boolean;
     };
     theme: 'light' | 'dark' | 'system';
+    themePreset: string;
     fontFamily: string;
     sessionTimeout: number;
     minPasswordLength: number;
     allowedOrigins: string;
+    customThemes: ThemePreset[];
 }
 
 export interface FileSettings {
@@ -48,6 +51,9 @@ interface ProjectState {
     updateSettings: (updates: Partial<ProjectSettings>) => Promise<void>;
     updateFileSettings: (updates: Partial<FileSettings>) => void;
     updateFeatureFlag: (flag: keyof ProjectSettings['featureFlags'], value: boolean) => Promise<void>;
+    addCustomTheme: (theme: ThemePreset) => Promise<void>;
+    removeCustomTheme: (themeId: string) => Promise<void>;
+    applyCustomTheme: (themeId: string) => Promise<void>;
 }
 
 const DEFAULT_SETTINGS: ProjectSettings = {
@@ -73,10 +79,12 @@ const DEFAULT_SETTINGS: ProjectSettings = {
         extensions: true,
     },
     theme: 'dark',
+    themePreset: 'midnight',
     fontFamily: 'Inter',
     sessionTimeout: 30,
     minPasswordLength: 8,
     allowedOrigins: '*',
+    customThemes: [],
 };
 
 const DEFAULT_FILE_SETTINGS: FileSettings = {
@@ -99,6 +107,7 @@ function mapDbSettings(data: any): Partial<ProjectSettings> {
         defaultLanguage: data.default_locale || DEFAULT_SETTINGS.defaultLanguage,
         timezone: data.default_timezone || DEFAULT_SETTINGS.timezone,
         theme: data.theme || DEFAULT_SETTINGS.theme,
+        themePreset: data.theme_preset || DEFAULT_SETTINGS.themePreset,
         fontFamily: data.default_font || DEFAULT_SETTINGS.fontFamily,
         defaultPageSize: data.default_page_size || DEFAULT_SETTINGS.defaultPageSize,
         defaultSortField: data.default_sort_field || DEFAULT_SETTINGS.defaultSortField,
@@ -107,6 +116,7 @@ function mapDbSettings(data: any): Partial<ProjectSettings> {
         numberFormat: data.number_format || DEFAULT_SETTINGS.numberFormat,
         featureFlags: data.feature_flags || DEFAULT_SETTINGS.featureFlags,
         logoUrl: data.project_logo || '',
+        customThemes: data.custom_themes || [],
     };
 }
 
@@ -156,6 +166,7 @@ export const useProjectStore = create<ProjectState>()(
                     if (updates.defaultLanguage !== undefined) payload.default_locale = updates.defaultLanguage;
                     if (updates.timezone !== undefined) payload.default_timezone = updates.timezone;
                     if (updates.theme !== undefined) payload.theme = updates.theme;
+                    if (updates.themePreset !== undefined) payload.theme_preset = updates.themePreset;
                     if (updates.fontFamily !== undefined) payload.default_font = updates.fontFamily;
                     if (updates.defaultPageSize !== undefined) payload.default_page_size = updates.defaultPageSize;
                     if (updates.defaultSortField !== undefined) payload.default_sort_field = updates.defaultSortField;
@@ -186,6 +197,41 @@ export const useProjectStore = create<ProjectState>()(
                     await api.patch('/settings', { feature_flags: newFlags });
                 } catch (err) {
                     console.error('[ProjectStore] updateFeatureFlag error:', err);
+                }
+            },
+
+            addCustomTheme: async (theme) => {
+                const newThemes = [...get().settings.customThemes, theme];
+                set((state) => ({
+                    settings: { ...state.settings, customThemes: newThemes }
+                }));
+                try {
+                    await api.patch('/settings', { custom_themes: newThemes });
+                } catch (err) {
+                    console.error('[ProjectStore] addCustomTheme error:', err);
+                }
+            },
+
+            removeCustomTheme: async (themeId) => {
+                const newThemes = get().settings.customThemes.filter(t => t.id !== themeId);
+                set((state) => ({
+                    settings: { ...state.settings, customThemes: newThemes }
+                }));
+                try {
+                    await api.patch('/settings', { custom_themes: newThemes });
+                } catch (err) {
+                    console.error('[ProjectStore] removeCustomTheme error:', err);
+                }
+            },
+
+            applyCustomTheme: async (themeId) => {
+                set((state) => ({
+                    settings: { ...state.settings, themePreset: themeId }
+                }));
+                try {
+                    await api.patch('/settings', { theme_preset: themeId });
+                } catch (err) {
+                    console.error('[ProjectStore] applyCustomTheme error:', err);
                 }
             },
         }),

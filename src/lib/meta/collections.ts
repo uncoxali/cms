@@ -1,4 +1,4 @@
-export type FieldType = 'string' | 'text' | 'textarea' | 'rich-text' | 'number' | 'integer' | 'float' | 'boolean' | 'select' | 'relation' | 'datetime' | 'file';
+export type FieldType = 'string' | 'text' | 'textarea' | 'rich-text' | 'number' | 'integer' | 'float' | 'boolean' | 'select' | 'relation' | 'datetime' | 'file' | 'chart';
 
 export interface FieldConfig {
   name: string;

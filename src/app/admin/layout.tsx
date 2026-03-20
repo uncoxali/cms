@@ -19,6 +19,7 @@ import { ShieldOff } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 import RealtimeProvider from '@/components/admin/RealtimeProvider';
 import ChatWidget from '@/components/admin/ChatWidget';
+import CommandPalette from '@/components/admin/CommandPalette';
 
 export default function AdminLayout({
   children,
@@ -178,6 +179,7 @@ export default function AdminLayout({
         </Box>
       </Box>
       <ChatWidget />
+      <CommandPalette />
       </ConfirmDialogProvider>
       </RealtimeProvider>
     </ThemeProvider>

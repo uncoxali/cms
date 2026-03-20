@@ -42,25 +42,33 @@ function mapDbRole(r: any): Role {
     const raw = r.permissions;
     let permissions: PermissionRule[] = [];
 
-    if (Array.isArray(raw)) {
-        permissions = raw;
-    } else if (raw && typeof raw === 'object') {
-        // New structured format: { collections: PermissionRule[], _modules, _api, _pages }
-        if (Array.isArray((raw as any).collections)) {
-            permissions = (raw as any).collections;
-        } else {
-            // Legacy format: { collectionName: { create, read, update, delete } }
-            permissions = Object.entries(raw)
-                .filter(([k]) => k !== '_all')
-                .map(([collection, perms]: [string, any]) => ({
-                    collection,
-                    create: perms.create ? 'full' : 'none' as PermissionAccess,
-                    read: perms.read ? 'full' : 'none' as PermissionAccess,
-                    update: perms.update ? 'full' : 'none' as PermissionAccess,
-                    delete: perms.delete ? 'full' : 'none' as PermissionAccess,
-                    share: 'none' as PermissionAccess,
-                }));
+    try {
+        if (Array.isArray(raw)) {
+            permissions = raw;
+        } else if (raw && typeof raw === 'object') {
+            // New structured format: { collections: PermissionRule[], _modules, _api, _pages }
+            if (Array.isArray((raw as any).collections)) {
+                permissions = (raw as any).collections;
+            } else if (raw.collections && typeof raw.collections === 'object') {
+                // Object format: { collections: { ... } }
+                permissions = [];
+            } else {
+                // Legacy format: { collectionName: { create, read, update, delete } }
+                permissions = Object.entries(raw)
+                    .filter(([k]) => k !== '_all' && k !== '_modules' && k !== '_api' && k !== '_pages')
+                    .map(([collection, perms]: [string, any]) => ({
+                        collection,
+                        create: perms.create ? 'full' : 'none' as PermissionAccess,
+                        read: perms.read ? 'full' : 'none' as PermissionAccess,
+                        update: perms.update ? 'full' : 'none' as PermissionAccess,
+                        delete: perms.delete ? 'full' : 'none' as PermissionAccess,
+                        share: 'none' as PermissionAccess,
+                    }));
+            }
         }
+    } catch (e) {
+        console.warn('[RolesStore] Error parsing permissions:', e);
+        permissions = [];
     }
 
     return {
@@ -85,8 +93,10 @@ export const useRolesStore = create<RolesState>()((set, get) => ({
         try {
             const token = api.getToken();
             if (!token) { set({ loading: false }); return; }
-            const res = await api.get<{ data: any[] }>('/roles');
-            const roles = (res.data || []).map(mapDbRole);
+            const res = await api.get('/roles') as any;
+            const rawData = res?.data || res || [];
+            const data = Array.isArray(rawData) ? rawData : (rawData.data || []);
+            const roles = data.map(mapDbRole);
             set({ roles, loading: false });
         } catch (err) {
             console.error('[RolesStore] fetch error:', err);
@@ -106,6 +116,7 @@ export const useRolesStore = create<RolesState>()((set, get) => ({
             await get().fetchRoles();
         } catch (err) {
             console.error('[RolesStore] add error:', err);
+            throw err;
         }
     },
 

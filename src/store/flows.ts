@@ -64,7 +64,7 @@ interface FlowsState {
     loading: boolean;
     fetchFlows: () => Promise<void>;
     fetchFlowDetail: (id: string) => Promise<Flow & { logs: FlowRunLog[] } | null>;
-    addFlow: (flow: Partial<Flow>) => Promise<void>;
+    addFlow: (flow: Partial<Flow>) => Promise<string | null>;
     updateFlow: (id: string, updates: Partial<Flow>) => Promise<void>;
     deleteFlow: (id: string) => Promise<void>;
     addOperation: (flowId: string, op: FlowOperation) => void;
@@ -148,7 +148,7 @@ export const useFlowsStore = create<FlowsState>()((set, get) => ({
 
     addFlow: async (flowData) => {
         try {
-            await api.post('/flows', {
+            const res = await api.post<{ data: any }>('/flows', {
                 name: flowData.name,
                 description: flowData.description,
                 icon: flowData.icon,
@@ -160,8 +160,10 @@ export const useFlowsStore = create<FlowsState>()((set, get) => ({
                 permission: flowData.permission || '$full',
             });
             await get().fetchFlows();
+            return res.data?.id;
         } catch (err) {
             console.error('[FlowsStore] add error:', err);
+            return null;
         }
     },
 

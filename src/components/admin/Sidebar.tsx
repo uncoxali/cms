@@ -13,19 +13,20 @@ import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import { useTheme, alpha } from '@mui/material/styles';
-import { FileText } from 'lucide-react';
+import { alpha, useTheme } from '@mui/material/styles';
+import { FileText, LayoutGrid, FileEdit, FolderOpen, Users, Zap, Activity, Settings } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 
-const DRAWER_WIDTH = 220;
+const DRAWER_WIDTH = 240;
 
 const MODULE_FEATURE_MAP: Record<string, string> = {
   dashboard: 'insights',
   files: 'files',
   flows: 'flows',
   activity: 'activity',
+  comments: 'comments',
+  revisions: 'revisions',
 };
 
 interface NavPage {
@@ -89,99 +90,50 @@ export default function Sidebar() {
     return p.roles.includes(role);
   });
 
-  const navItemSx = (isActive: boolean) => ({
-    minHeight: 42,
-    justifyContent: 'flex-start',
-    borderRadius: '10px',
-    px: 1.5,
-    color: isActive ? theme.palette.primary.main : theme.palette.text.secondary,
-    position: 'relative' as const,
-    transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
-    background: isActive
-      ? alpha(theme.palette.primary.main, isDark ? 0.14 : 0.08)
-      : 'transparent',
-    '&::before': isActive
-      ? {
-          content: '""',
-          position: 'absolute',
-          left: -8,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: 3,
-          height: 20,
-          borderRadius: '0 4px 4px 0',
-          background: `linear-gradient(180deg, ${theme.palette.primary.main}, ${theme.palette.primary.light})`,
-        }
-      : {},
-    '&:hover': {
-      background: isActive
-        ? alpha(theme.palette.primary.main, isDark ? 0.2 : 0.12)
-        : alpha(theme.palette.text.primary, isDark ? 0.06 : 0.04),
-      color: isActive ? theme.palette.primary.main : theme.palette.text.primary,
-    },
-  });
-
   return (
     <Box
       sx={{
         width: DRAWER_WIDTH,
         flexShrink: 0,
         height: '100vh',
-        bgcolor: isDark
-          ? alpha(theme.palette.background.paper, 0.6)
-          : theme.palette.background.paper,
-        borderRight: `1px solid ${theme.palette.divider}`,
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'stretch',
-        pt: 2,
-        pb: 2,
-        position: 'relative',
-        backdropFilter: isDark ? 'blur(20px)' : 'none',
+        bgcolor: 'background.paper',
+        borderRight: `1px solid ${theme.palette.divider}`,
+        overflow: 'hidden',
       }}
     >
-      {/* Logo + Project title */}
-      <Box sx={{ mb: 3, px: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <Box sx={{
-          width: 36,
-          height: 36,
-          borderRadius: '12px',
-          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.35)}`,
-          transition: 'all 300ms ease',
-          cursor: 'pointer',
-          '&:hover': {
-            transform: 'scale(1.08)',
-            boxShadow: `0 6px 24px ${alpha(theme.palette.primary.main, 0.45)}`,
-          },
-        }}>
-          <Typography sx={{ color: '#fff', fontWeight: 800, fontSize: 16, letterSpacing: '-0.03em' }}>N</Typography>
-        </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-          <Typography
-            variant="subtitle2"
-            sx={{ fontWeight: 700, fontSize: 13, letterSpacing: '-0.02em' }}
+      {/* Logo */}
+      <Box sx={{ p: 2.5, pb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box
+            sx={{
+              width: 36,
+              height: 36,
+              borderRadius: '10px',
+              background: `linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
-            Neurofy CMS
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ fontSize: 11, opacity: 0.8 }}>
-            Admin Panel
-          </Typography>
+            <Typography sx={{ color: '#fff', fontWeight: 800, fontSize: 16 }}>
+              N
+            </Typography>
+          </Box>
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700} fontSize={14}>
+              Neurofy CMS
+            </Typography>
+            <Typography variant="caption" color="text.secondary" fontSize={11}>
+              Content Platform
+            </Typography>
+          </Box>
         </Box>
       </Box>
 
-      {/* Core Modules */}
-      <List sx={{
-        width: '100%',
-        px: 1.25,
-        flexGrow: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 0.25,
-      }}>
+      {/* Navigation */}
+      <List sx={{ px: 1.5, flexGrow: 1, overflow: 'auto' }}>
         {ExtensionRegistry.modules.map((item) => {
           if (!role || !item.permissionsRequired.includes(role)) return null;
           if (!hasModuleAccess(item.id)) return null;
@@ -189,22 +141,59 @@ export default function Sidebar() {
           if (flagKey && !(featureFlags as any)[flagKey]) return null;
 
           const isActive = pathname.startsWith(item.path);
-
           const labelKey = SIDEBAR_KEYS[item.id];
           const label = labelKey ? t(labelKey) : item.name;
 
           return (
             <ListItem key={item.id} disablePadding>
-              <ListItemButton component={Link} href={item.path} sx={navItemSx(isActive)}>
-                <ListItemIcon sx={{ minWidth: 32, color: 'inherit' }}>
-                  <item.icon size={20} strokeWidth={isActive ? 2.2 : 1.7} />
+              <ListItemButton
+                component={Link}
+                href={item.path}
+                sx={{
+                  borderRadius: '10px',
+                  mb: 0.5,
+                  py: 1,
+                  px: 1.5,
+                  position: 'relative',
+                  bgcolor: isActive ? alpha('#8B5CF6', isDark ? 0.15 : 0.1) : 'transparent',
+                  '&:hover': {
+                    bgcolor: isActive 
+                      ? alpha('#8B5CF6', isDark ? 0.2 : 0.15) 
+                      : alpha(theme.palette.text.primary, isDark ? 0.06 : 0.04),
+                  },
+                }}
+              >
+                {isActive && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      left: 0,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: 3,
+                      height: 20,
+                      borderRadius: '0 3px 3px 0',
+                      bgcolor: '#8B5CF6',
+                    }}
+                  />
+                )}
+                <ListItemIcon
+                  sx={{
+                    minWidth: 36,
+                    color: isActive ? '#8B5CF6' : theme.palette.text.secondary,
+                  }}
+                >
+                  <item.icon size={18} />
                 </ListItemIcon>
                 <ListItemText
                   primary={label}
                   slotProps={{
                     primary: {
-                      fontSize: 13,
-                      fontWeight: isActive ? 600 : 500,
+                      sx: {
+                        fontSize: 13.5,
+                        fontWeight: isActive ? 600 : 500,
+                        color: isActive ? '#8B5CF6' : 'text.primary',
+                      },
                     },
                   }}
                 />
@@ -216,34 +205,40 @@ export default function Sidebar() {
         {/* Custom Pages */}
         {visiblePages.length > 0 && (
           <>
-            <Box sx={{
-              display: 'flex',
-              justifyContent: 'flex-start',
-              px: 2,
-              mt: 1,
-              mb: 0.5,
-            }}>
-              <Box sx={{
-                width: '100%',
-                height: 1,
-                bgcolor: theme.palette.divider,
-                borderRadius: 1,
-              }} />
-            </Box>
+            <Box sx={{ my: 0.5, mx: 1, height: 1, bgcolor: 'divider' }} />
             {visiblePages.map((page) => {
               const isActive = pathname === `/admin/pages/view/${page.id}`;
               return (
                 <ListItem key={`page-${page.id}`} disablePadding>
-                  <ListItemButton component={Link} href={`/admin/pages/view/${page.id}`} sx={navItemSx(isActive)}>
-                    <ListItemIcon sx={{ minWidth: 32, color: 'inherit' }}>
-                      <FileText size={20} strokeWidth={isActive ? 2.2 : 1.7} />
+                  <ListItemButton
+                    component={Link}
+                    href={`/admin/pages/view/${page.id}`}
+                    sx={{
+                      borderRadius: '10px',
+                      mb: 0.5,
+                      py: 1,
+                      px: 1.5,
+                      position: 'relative',
+                      bgcolor: isActive ? alpha('#8B5CF6', isDark ? 0.15 : 0.1) : 'transparent',
+                      '&:hover': {
+                        bgcolor: isActive 
+                          ? alpha('#8B5CF6', isDark ? 0.2 : 0.15) 
+                          : alpha(theme.palette.text.primary, isDark ? 0.06 : 0.04),
+                      },
+                    }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 36, color: isActive ? '#8B5CF6' : 'text.secondary' }}>
+                      <FileText size={18} />
                     </ListItemIcon>
                     <ListItemText
                       primary={page.title}
                       slotProps={{
                         primary: {
-                          fontSize: 13,
-                          fontWeight: isActive ? 600 : 500,
+                          sx: {
+                            fontSize: 13.5,
+                            fontWeight: isActive ? 600 : 500,
+                            color: isActive ? '#8B5CF6' : 'text.primary',
+                          },
                         },
                       }}
                     />
@@ -255,14 +250,40 @@ export default function Sidebar() {
         )}
       </List>
 
-      {/* Bottom accent */}
-      <Box sx={{
-        width: 28,
-        height: 3,
-        borderRadius: 2,
-        bgcolor: alpha(theme.palette.primary.main, 0.2),
-        mb: 1,
-      }} />
+      {/* Settings */}
+      <Box sx={{ p: 1.5, borderTop: `1px solid ${theme.palette.divider}` }}>
+        <ListItemButton
+          component={Link}
+          href="/admin/settings"
+          sx={{
+            borderRadius: '10px',
+            py: 1,
+            px: 1.5,
+            bgcolor: pathname.startsWith('/admin/settings') 
+              ? alpha('#8B5CF6', isDark ? 0.15 : 0.1) 
+              : 'transparent',
+            '&:hover': {
+              bgcolor: alpha('#8B5CF6', isDark ? 0.15 : 0.08),
+            },
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 36, color: pathname.startsWith('/admin/settings') ? '#8B5CF6' : 'text.secondary' }}>
+            <Settings size={18} />
+          </ListItemIcon>
+          <ListItemText
+            primary="Settings"
+            slotProps={{
+              primary: {
+                sx: {
+                  fontSize: 13.5,
+                  fontWeight: 500,
+                  color: pathname.startsWith('/admin/settings') ? '#8B5CF6' : 'text.primary',
+                },
+              },
+            }}
+          />
+        </ListItemButton>
+      </Box>
     </Box>
   );
 }

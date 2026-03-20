@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const db = getDb();
+    await runMigrations(db);
     const url = new URL(request.url);
     const status = url.searchParams.get('status');
     const parent = url.searchParams.get('parent_id');

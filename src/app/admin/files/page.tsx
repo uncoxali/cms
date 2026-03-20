@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { useTheme } from '@mui/material/styles';
+import { alpha, useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
@@ -237,14 +237,19 @@ export default function FilesPage() {
 
       {/* Main Content */}
       <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Box>
-            <Typography variant="h4" fontWeight={800} letterSpacing="-0.02em">File Library</Typography>
-            <Typography variant="body2" color="text.secondary">{files.length} files • {formatSize(totalSize)} total</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ width: 48, height: 48, borderRadius: '14px', bgcolor: alpha('#10B981', 0.1), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FolderOpen size={24} color="#10B981" />
+            </Box>
+            <Box>
+              <Typography variant="h3" fontWeight={700}>File Library</Typography>
+              <Typography variant="body2" color="text.secondary">{files.length} files • {formatSize(totalSize)} total</Typography>
+            </Box>
           </Box>
           <Box sx={{ display: 'flex', gap: 1.5 }}>
             {canEdit && selectedIds.length > 0 && (
-              <Button variant="outlined" color="error" startIcon={<Trash2 size={16} />} onClick={handleBulkDelete}>
+              <Button variant="outlined" color="error" startIcon={<Trash2 size={16} />} onClick={handleBulkDelete} sx={{ borderRadius: '10px' }}>
                 Delete ({selectedIds.length})
               </Button>
             )}
@@ -254,6 +259,7 @@ export default function FilesPage() {
                 startIcon={uploading ? <CircularProgress size={16} color="inherit" /> : <Upload size={16} />}
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
+                sx={{ borderRadius: '10px' }}
               >
                 {uploading ? 'Uploading...' : 'Upload'}
               </Button>

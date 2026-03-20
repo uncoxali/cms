@@ -35,7 +35,9 @@ export async function verifyToken(token: string) {
 
 export async function getSession(request?: NextRequest) {
     const cookieStore = request ? request.cookies : await cookies();
-    const token = cookieStore.get('session')?.value;
+    const token =
+        request?.headers.get('Authorization')?.replace('Bearer ', '') ||
+        cookieStore.get('session')?.value;
 
     if (!token) return null;
 

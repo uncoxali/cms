@@ -6,6 +6,17 @@ import {
     Settings,
     Activity,
     Globe,
+    MessageSquare,
+    History,
+    FileText,
+    Mail,
+    Shield,
+    KeyRound,
+    Zap,
+    Clock,
+    Globe2,
+    Puzzle,
+    Image,
     LucideIcon
 } from 'lucide-react';
 
@@ -108,6 +119,24 @@ export const ExtensionRegistry = {
             name: 'Activity Logs',
             icon: Activity,
             path: '/admin/activity',
+            permissionsRequired: ['admin'],
+            version: '1.0.0',
+            author: 'Core'
+        },
+        {
+            id: 'comments',
+            name: 'Comments',
+            icon: MessageSquare,
+            path: '/admin/comments',
+            permissionsRequired: ['admin', 'editor'],
+            version: '1.0.0',
+            author: 'Core'
+        },
+        {
+            id: 'revisions',
+            name: 'Revisions',
+            icon: History,
+            path: '/admin/revisions',
             permissionsRequired: ['admin'],
             version: '1.0.0',
             author: 'Core'

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
@@ -27,6 +26,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Grid from '@mui/material/Grid';
+import { alpha, useTheme } from '@mui/material/styles';
 import { useRolesStore } from '@/store/roles';
 import { useActivityStore } from '@/store/activity';
 import { useNotificationsStore } from '@/store/notifications';
@@ -34,8 +34,8 @@ import { useAuthStore } from '@/store/auth';
 import { api } from '@/lib/api';
 import { useConfirm } from '@/components/admin/ConfirmDialog';
 import {
-  Search, Plus, Mail, Shield, Edit2, Trash2, Users,
-  MoreHorizontal, ChevronDown, UserCheck, UserX
+  Search, Plus, Mail, Edit2, Trash2, Users,
+  ChevronDown, UserCheck, UserX
 } from 'lucide-react';
 
 interface UserRecord {
@@ -51,15 +51,16 @@ interface UserRecord {
   dateCreated: string;
 }
 
-const STATUS_COLORS: Record<string, { color: 'success' | 'error' | 'warning'; hex: string }> = {
-  active: { color: 'success', hex: '#22C55E' },
-  suspended: { color: 'error', hex: '#EF4444' },
-  invited: { color: 'warning', hex: '#F59E0B' },
+const STATUS_COLORS: Record<string, { color: 'success' | 'error' | 'warning'; bg: string }> = {
+  active: { color: 'success', bg: '#10B981' },
+  suspended: { color: 'error', bg: '#EF4444' },
+  invited: { color: 'warning', bg: '#F59E0B' },
 };
 
 export default function UsersPage() {
   const router = useRouter();
   const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const role = useAuthStore((s) => s.role);
   const { roles } = useRolesStore();
   const { addLog } = useActivityStore();
@@ -78,14 +79,12 @@ export default function UsersPage() {
   const [inviteForm, setInviteForm] = useState({ firstName: '', lastName: '', email: '', roleId: 'role_editor' });
   const [bulkMenuAnchor, setBulkMenuAnchor] = useState<null | HTMLElement>(null);
 
-  // Fetch users from API (admins only)
   useEffect(() => {
     if (role === 'admin') {
       fetchUsers();
     }
   }, [role]);
 
-  // Non-admins should not see this page at all
   useEffect(() => {
     if (role && role !== 'admin') {
       router.replace('/admin/dashboard');
@@ -123,9 +122,9 @@ export default function UsersPage() {
 
   const getRoleName = (roleId: string) => roles.find(r => r.id === roleId)?.name || roleId;
   const getRoleColor = (roleId: string) => {
-    if (roleId === 'role_admin') return theme.palette.error.main;
-    if (roleId === 'role_editor') return theme.palette.info.main;
-    return theme.palette.text.secondary;
+    if (roleId === 'role_admin') return '#EF4444';
+    if (roleId === 'role_editor') return '#3B82F6';
+    return '#8B5CF6';
   };
 
   const filteredUsers = users.filter(u => {
@@ -172,7 +171,7 @@ export default function UsersPage() {
         role: inviteForm.roleId,
         status: 'invited',
       });
-      addLog({ action: 'create', collection: 'neurofy_users', item: inviteForm.email, user: 'Admin User' });
+      addLog({ action: 'create', collection: 'users', item: inviteForm.email, user: 'Admin User' });
       addNotification({ title: 'User Invited', message: `Invitation sent to ${inviteForm.email}.` });
       setInviteOpen(false);
       setInviteForm({ firstName: '', lastName: '', email: '', roleId: 'role_editor' });
@@ -184,11 +183,11 @@ export default function UsersPage() {
 
   const handleDelete = async (userId: string) => {
     const user = users.find(u => u.id === userId);
-    const ok = await confirm({ title: 'Remove User', message: `Are you sure you want to remove "${user?.firstName} ${user?.lastName}"? This action cannot be undone.`, confirmText: 'Remove', severity: 'error' });
+    const ok = await confirm({ title: 'Remove User', message: `Are you sure you want to remove "${user?.firstName} ${user?.lastName}"?`, confirmText: 'Remove', severity: 'error' });
     if (!ok) return;
     try {
       await api.del(`/users/${userId}`);
-      addLog({ action: 'delete', collection: 'neurofy_users', item: userId, user: 'Admin User' });
+      addLog({ action: 'delete', collection: 'users', item: userId, user: 'Admin User' });
       addNotification({ title: 'User Removed', message: `${user?.email} has been removed.` });
       fetchUsers();
     } catch {}
@@ -207,72 +206,55 @@ export default function UsersPage() {
   const pageItems = filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
   const allPageSelected = pageItems.length > 0 && pageItems.every(u => selectedIds.includes(u.id));
 
-  // While role is loading or redirecting, render nothing to avoid flicker
-  if (!role) {
-    return null;
-  }
-  if (role !== 'admin') {
-    return null;
-  }
+  if (!role) return null;
+  if (role !== 'admin') return null;
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', animation: 'fadeIn 300ms ease-out' }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Typography variant="h4" fontWeight={700} display="flex" alignItems="center" gap={1.5}>
-            <Users size={28} /> User Directory
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {users.length} users total — {users.filter(u => u.status === 'active').length} active
-          </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ width: 48, height: 48, borderRadius: '14px', bgcolor: alpha('#EC4899', 0.1), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Users size={24} color="#EC4899" />
+          </Box>
+          <Box>
+            <Typography variant="h3" fontWeight={700}>User Directory</Typography>
+            <Typography variant="body2" color="text.secondary">
+              {users.length} users total — {users.filter(u => u.status === 'active').length} active
+            </Typography>
+          </Box>
         </Box>
         <Box sx={{ display: 'flex', gap: 1.5 }}>
           {selectedIds.length > 0 && (
             <>
-              <Button variant="outlined" endIcon={<ChevronDown size={14} />}
-                onClick={(e) => setBulkMenuAnchor(e.currentTarget)}
-                sx={{ borderColor: 'divider' }}>
+              <Button variant="outlined" endIcon={<ChevronDown size={14} />} onClick={(e) => setBulkMenuAnchor(e.currentTarget)} sx={{ borderRadius: '10px' }}>
                 {selectedIds.length} Selected
               </Button>
               <Menu anchorEl={bulkMenuAnchor} open={!!bulkMenuAnchor} onClose={() => setBulkMenuAnchor(null)}>
-                <MenuItem onClick={() => handleBulkAction('activate')}>
-                  <UserCheck size={16} style={{ marginRight: 8 }} /> Activate
-                </MenuItem>
-                <MenuItem onClick={() => handleBulkAction('suspend')}>
-                  <UserX size={16} style={{ marginRight: 8 }} /> Suspend
-                </MenuItem>
-                <MenuItem onClick={() => handleBulkAction('delete')} sx={{ color: 'error.main' }}>
-                  <Trash2 size={16} style={{ marginRight: 8 }} /> Delete
-                </MenuItem>
+                <MenuItem onClick={() => handleBulkAction('activate')}><UserCheck size={16} style={{ marginRight: 8 }} /> Activate</MenuItem>
+                <MenuItem onClick={() => handleBulkAction('suspend')}><UserX size={16} style={{ marginRight: 8 }} /> Suspend</MenuItem>
+                <MenuItem onClick={() => handleBulkAction('delete')} sx={{ color: 'error.main' }}><Trash2 size={16} style={{ marginRight: 8 }} /> Delete</MenuItem>
               </Menu>
             </>
           )}
-          <Button variant="contained" startIcon={<Plus size={18} />}
-            onClick={() => router.push('/admin/users/new')}
-            sx={{ bgcolor: 'primary.main', '&:hover': { bgcolor: 'primary.dark' } }}>
+          <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => router.push('/admin/users/new')} sx={{ borderRadius: '10px' }}>
             Add User
           </Button>
         </Box>
       </Box>
 
       {/* Filters */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
-        <TextField
-          size="small" placeholder="Search by name or email..."
-          value={search} onChange={e => { setSearch(e.target.value); setPage(0); }}
-          sx={{ width: 300 }}
-          slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search size={16} /></InputAdornment> } }}
-        />
+      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+        <TextField size="small" placeholder="Search by name or email..." value={search}
+          onChange={e => { setSearch(e.target.value); setPage(0); }} sx={{ width: 300 }}
+          slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search size={16} /></InputAdornment> } }} />
         <TextField select size="small" label="Role" value={roleFilter}
-          onChange={e => { setRoleFilter(e.target.value); setPage(0); }}
-          sx={{ minWidth: 140 }}>
+          onChange={e => { setRoleFilter(e.target.value); setPage(0); }} sx={{ minWidth: 140 }}>
           <MenuItem value="all">All Roles</MenuItem>
           {roles.map(r => <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>)}
         </TextField>
         <TextField select size="small" label="Status" value={statusFilter}
-          onChange={e => { setStatusFilter(e.target.value); setPage(0); }}
-          sx={{ minWidth: 140 }}>
+          onChange={e => { setStatusFilter(e.target.value); setPage(0); }} sx={{ minWidth: 140 }}>
           <MenuItem value="all">All Statuses</MenuItem>
           <MenuItem value="active">Active</MenuItem>
           <MenuItem value="suspended">Suspended</MenuItem>
@@ -281,19 +263,20 @@ export default function UsersPage() {
       </Box>
 
       {/* Stats Cards */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-        {roles.map(role => {
-          const count = users.filter(u => u.roleId === role.id).length;
+      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+        {roles.map(r => {
+          const count = users.filter(u => u.roleId === r.id).length;
+          const color = getRoleColor(r.id);
           return (
-            <Paper key={role.id} variant="outlined" sx={{
+            <Paper key={r.id} sx={{
               px: 2.5, py: 1.5, display: 'flex', alignItems: 'center', gap: 1.5,
-              cursor: 'pointer', transition: 'all 200ms',
-              border: roleFilter === role.id ? `1px solid ${getRoleColor(role.id)}` : undefined,
-              '&:hover': { borderColor: getRoleColor(role.id) },
-            }} onClick={() => setRoleFilter(roleFilter === role.id ? 'all' : role.id)}>
-              <Shield size={16} style={{ color: getRoleColor(role.id) }} />
+              cursor: 'pointer', borderRadius: '12px', transition: 'all 150ms',
+              border: roleFilter === r.id ? `2px solid ${color}` : `1px solid ${theme.palette.divider}`,
+              '&:hover': { borderColor: color, bgcolor: alpha(color, 0.04) },
+            }} onClick={() => setRoleFilter(roleFilter === r.id ? 'all' : r.id)}>
+              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: color }} />
               <Box>
-                <Typography variant="caption" color="text.secondary">{role.name}</Typography>
+                <Typography variant="caption" color="text.secondary">{r.name}</Typography>
                 <Typography variant="body2" fontWeight={700}>{count}</Typography>
               </Box>
             </Paper>
@@ -302,7 +285,7 @@ export default function UsersPage() {
       </Box>
 
       {/* Table */}
-      <TableContainer component={Paper} sx={{ flexGrow: 1 }}>
+      <TableContainer component={Paper} sx={{ flexGrow: 1, borderRadius: '16px' }}>
         <Table stickyHeader>
           <TableHead>
             <TableRow>
@@ -321,42 +304,24 @@ export default function UsersPage() {
           </TableHead>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={8} align="center" sx={{ py: 6 }}>
-                <Typography color="text.secondary">Loading users...</Typography>
-              </TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} align="center" sx={{ py: 6 }}><Typography color="text.secondary">Loading users...</Typography></TableCell></TableRow>
             ) : pageItems.length === 0 ? (
-              <TableRow><TableCell colSpan={8} align="center" sx={{ py: 6 }}>
-                <Typography color="text.secondary">No users found.</Typography>
-              </TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} align="center" sx={{ py: 6 }}><Typography color="text.secondary">No users found.</Typography></TableCell></TableRow>
             ) : (
               pageItems.map(user => (
-                <TableRow key={user.id} hover sx={{ cursor: 'pointer' }}
-                  onClick={() => router.push(`/admin/users/${user.id}`)}>
+                <TableRow key={user.id} hover sx={{ cursor: 'pointer' }} onClick={() => router.push(`/admin/users/${user.id}`)}>
                   <TableCell padding="checkbox" onClick={e => e.stopPropagation()}>
-                    <Checkbox checked={selectedIds.includes(user.id)}
-                      onChange={() => handleToggleSelect(user.id)} />
+                    <Checkbox checked={selectedIds.includes(user.id)} onChange={() => handleToggleSelect(user.id)} />
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <Avatar
-                        src={user.avatar || undefined}
-                        sx={{
-                          width: 32,
-                          height: 32,
-                          fontSize: 13,
-                          bgcolor: getRoleColor(user.roleId),
-                          fontWeight: 700,
-                        }}
-                      >
-                        {!user.avatar && (
-                          <>
-                            {user.firstName?.[0] || ''}{user.lastName?.[0] || ''}
-                          </>
-                        )}
+                      <Avatar src={user.avatar || undefined} sx={{
+                        width: 36, height: 36, fontSize: 14, fontWeight: 700,
+                        background: `linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)`, color: '#fff',
+                      }}>
+                        {!user.avatar && <>{user.firstName?.[0]}{user.lastName?.[0]}</>}
                       </Avatar>
-                      <Typography variant="body2" fontWeight={600}>
-                        {user.firstName} {user.lastName}
-                      </Typography>
+                      <Typography variant="body2" fontWeight={600}>{user.firstName} {user.lastName}</Typography>
                     </Box>
                   </TableCell>
                   <TableCell>
@@ -367,7 +332,7 @@ export default function UsersPage() {
                   </TableCell>
                   <TableCell>
                     <Chip label={getRoleName(user.roleId)} size="small"
-                      sx={{ bgcolor: `${getRoleColor(user.roleId)}18`, color: getRoleColor(user.roleId), fontWeight: 600 }} />
+                      sx={{ bgcolor: alpha(getRoleColor(user.roleId), 0.1), color: getRoleColor(user.roleId), fontWeight: 600 }} />
                   </TableCell>
                   <TableCell>
                     <Chip label={user.status} size="small" color={STATUS_COLORS[user.status]?.color || 'default'}
@@ -382,12 +347,8 @@ export default function UsersPage() {
                     </Typography>
                   </TableCell>
                   <TableCell align="right" onClick={e => e.stopPropagation()}>
-                    <IconButton size="small" onClick={() => router.push(`/admin/users/${user.id}`)} title="Edit">
-                      <Edit2 size={15} />
-                    </IconButton>
-                    <IconButton size="small" color="error" onClick={() => handleDelete(user.id)} title="Delete">
-                      <Trash2 size={15} />
-                    </IconButton>
+                    <IconButton size="small" onClick={() => router.push(`/admin/users/${user.id}`)}><Edit2 size={15} /></IconButton>
+                    <IconButton size="small" color="error" onClick={() => handleDelete(user.id)}><Trash2 size={15} /></IconButton>
                   </TableCell>
                 </TableRow>
               ))
@@ -395,13 +356,10 @@ export default function UsersPage() {
           </TableBody>
         </Table>
       </TableContainer>
-      <TablePagination
-        component="div" count={filteredUsers.length} page={page}
+      <TablePagination component="div" count={filteredUsers.length} page={page}
         onPageChange={(_, p) => setPage(p)} rowsPerPage={rowsPerPage}
         onRowsPerPageChange={e => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
-        rowsPerPageOptions={[5, 10, 25, 50]}
-        sx={{ borderTop: 1, borderColor: 'divider' }}
-      />
+        rowsPerPageOptions={[5, 10, 25, 50]} sx={{ borderTop: 1, borderColor: 'divider' }} />
 
       {/* Invite Dialog */}
       <Dialog open={inviteOpen} onClose={() => setInviteOpen(false)} maxWidth="sm" fullWidth>
@@ -431,10 +389,7 @@ export default function UsersPage() {
         <DialogActions sx={{ p: 2 }}>
           <Button onClick={() => setInviteOpen(false)} color="inherit">Cancel</Button>
           <Button variant="contained" onClick={handleInvite}
-            disabled={!inviteForm.email || !inviteForm.firstName}
-            sx={{ bgcolor: 'primary.main' }}>
-            Send Invitation
-          </Button>
+            disabled={!inviteForm.email || !inviteForm.firstName}>Send Invitation</Button>
         </DialogActions>
       </Dialog>
     </Box>

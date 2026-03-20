@@ -99,6 +99,18 @@ export async function seed(db: Knex) {
             activity: true,
             extensions: true,
         }),
+        seo_json: JSON.stringify({
+            siteName: 'NexDirect',
+            siteDescription: 'A modern headless CMS',
+            siteUrl: 'https://example.com',
+            defaultOgImage: '',
+            twitterHandle: '',
+            enableAutoKeywords: true,
+            enableAutoDescriptions: true,
+            enableStructuredData: true,
+            enableSitemap: true,
+            enableRobotsTxt: true,
+        }),
     });
 
     // ---- Default Folders ----

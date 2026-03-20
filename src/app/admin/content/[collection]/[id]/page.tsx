@@ -21,13 +21,19 @@ import Snackbar from '@mui/material/Snackbar';
 import Skeleton from '@mui/material/Skeleton';
 import Autocomplete from '@mui/material/Autocomplete';
 import Chip from '@mui/material/Chip';
+import Tooltip from '@mui/material/Tooltip';
 import { notFound, useRouter } from 'next/navigation';
-import { Check, X, RotateCcw, Clock, Trash2 } from 'lucide-react';
+import { Check, X, RotateCcw, Clock, Trash2, EyeOff, Lock } from 'lucide-react';
 import { useRevisionsStore, Revision } from '@/store/revisions';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSchemaStore } from '@/store/schema';
 import { useAuthStore, hasCollectionAccess } from '@/store/auth';
 import { useConfirm } from '@/components/admin/ConfirmDialog';
+import { usePermissionsStore } from '@/store/permissions';
+import { useFilesStore, FileItem } from '@/store/files';
+import { MediaItemField } from '@/components/admin/MediaItemField';
+import { ChartField } from '@/components/admin/ChartField';
+import { ChartConfig } from '@/components/admin/ChartBuilder';
 import { api } from '@/lib/api';
 
 export default function ItemEditorPage({ params }: { params: Promise<{ collection: string; id: string }> }) {
@@ -41,6 +47,96 @@ export default function ItemEditorPage({ params }: { params: Promise<{ collectio
   const user = useAuthStore((s) => s.user);
   const canEdit = hasCollectionAccess(user, collection, 'update') || hasCollectionAccess(user, collection, 'create');
   const config = collections[collection];
+
+  // Permissions
+  const { permissions, validationRules, fetchRolePermissions, checkFieldAccess } = usePermissionsStore();
+
+  // Fetch role permissions
+  useEffect(() => {
+    if (role) {
+      fetchRolePermissions(role);
+    }
+  }, [role, fetchRolePermissions]);
+
+  // Get field permissions for current collection
+  const fieldPerms = useMemo(() => {
+    if (!role) return {};
+    return permissions[role]?.collections?.[collection]?.fields || {};
+  }, [permissions, role, collection]);
+
+  // Get validation rules for current collection
+  const collectionValidationRules = useMemo(() => {
+    return validationRules.filter((r) => r.collection === collection);
+  }, [validationRules, collection]);
+
+  // Check if field should be hidden
+  const isFieldHidden = (fieldName: string) => {
+    if (!role || !canEdit) return false;
+    return !checkFieldAccess(role, collection, fieldName, 'read');
+  };
+
+  // Check if field is read-only
+  const isFieldReadOnly = (fieldName: string) => {
+    if (!role || !canEdit) return false;
+    const hasWrite = checkFieldAccess(role, collection, fieldName, 'write');
+    return !hasWrite;
+  };
+
+  // Validate form data against validation rules
+  const validateForm = () => {
+    const errors: string[] = [];
+
+    for (const rule of collectionValidationRules) {
+      const fieldValue = formData[rule.field];
+      const ruleType = rule.rule?.type as string;
+      const ruleValue = rule.rule?.value as string | number;
+
+      switch (ruleType) {
+        case 'required':
+          if (fieldValue === null || fieldValue === undefined || fieldValue === '') {
+            errors.push(rule.errorMessage);
+          }
+          break;
+        case 'min_length':
+          if (typeof fieldValue === 'string' && fieldValue.length < (ruleValue as number)) {
+            errors.push(rule.errorMessage);
+          }
+          break;
+        case 'max_length':
+          if (typeof fieldValue === 'string' && fieldValue.length > (ruleValue as number)) {
+            errors.push(rule.errorMessage);
+          }
+          break;
+        case 'min':
+          if (typeof fieldValue === 'number' && fieldValue < (ruleValue as number)) {
+            errors.push(rule.errorMessage);
+          }
+          break;
+        case 'max':
+          if (typeof fieldValue === 'number' && fieldValue > (ruleValue as number)) {
+            errors.push(rule.errorMessage);
+          }
+          break;
+        case 'pattern':
+          if (typeof fieldValue === 'string' && !new RegExp(ruleValue as string).test(fieldValue)) {
+            errors.push(rule.errorMessage);
+          }
+          break;
+        case 'email':
+          if (typeof fieldValue === 'string' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fieldValue)) {
+            errors.push(rule.errorMessage);
+          }
+          break;
+        case 'url':
+          if (typeof fieldValue === 'string' && !/^https?:\/\/.+/.test(fieldValue)) {
+            errors.push(rule.errorMessage);
+          }
+          break;
+      }
+    }
+
+    return errors;
+  };
 
   if (!config) {
     notFound();
@@ -99,6 +195,14 @@ export default function ItemEditorPage({ params }: { params: Promise<{ collectio
   }, [collection, id, isNew, getRevisionsForItem]);
 
   const handleSave = async () => {
+    // Run validation
+    const validationErrors = validateForm();
+    if (validationErrors.length > 0) {
+      setError(validationErrors[0]);
+      setSnackbar({ open: true, message: validationErrors[0], severity: 'error' });
+      return;
+    }
+
     setSaving(true);
     setError(null);
     try {
@@ -248,8 +352,26 @@ export default function ItemEditorPage({ params }: { params: Promise<{ collectio
 
           {activeTab === 0 && (
             <Grid container spacing={3}>
-              {config.fields.filter(f => f.group !== 'Meta').map(field => (
+              {config.fields.filter(f => f.group !== 'Meta' && !isFieldHidden(f.name)).map(field => {
+                const readOnly = isFieldReadOnly(field.name);
+                const perm = fieldPerms[field.name];
+                const hasPartialAccess = perm && (perm.read === 'partial' || perm.write === 'none');
+                const fieldDisabled = !canEdit || readOnly;
+
+                return (
                 <Grid size={{ xs: 12, sm: field.type === 'textarea' || field.type === 'rich-text' || field.type === 'text' ? 12 : 6 }} key={field.name}>
+                  {hasPartialAccess && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                      <Chip 
+                        icon={readOnly ? <Lock size={10} /> : <EyeOff size={10} />} 
+                        label={readOnly ? 'Read-only' : 'View-only'} 
+                        size="small" 
+                        color="warning"
+                        variant="outlined"
+                        sx={{ height: 20, fontSize: 10 }}
+                      />
+                    </Box>
+                  )}
                   {field.type === 'relation' && field.relationInfo ? (() => {
                     const relCol = field.relationInfo.collection;
                     const relOpts = relationOptions[relCol];
@@ -265,7 +387,7 @@ export default function ItemEditorPage({ params }: { params: Promise<{ collectio
                         value={selectedOption}
                         onChange={(_, newVal) => setFormData({ ...formData, [field.name]: newVal ? newVal.id : null })}
                         isOptionEqualToValue={(opt: any, val: any) => opt.id === val?.id}
-                        disabled={!canEdit}
+                        disabled={fieldDisabled}
                         renderInput={(params) => (
                           <TextField
                             {...params}
@@ -296,7 +418,7 @@ export default function ItemEditorPage({ params }: { params: Promise<{ collectio
                         )}
                       />
                     );
-                  })() : field.type === 'string' || field.type === 'number' || field.type === 'integer' || field.type === 'float' ? (
+                  })(                  ) : field.type === 'string' || field.type === 'number' || field.type === 'integer' || field.type === 'float' ? (
                     <TextField 
                       fullWidth 
                       label={field.label} 
@@ -305,7 +427,7 @@ export default function ItemEditorPage({ params }: { params: Promise<{ collectio
                       variant="outlined" 
                       value={formData[field.name] ?? ''}
                       onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                      slotProps={{ input: { readOnly: !canEdit } }}
+                      slotProps={{ input: { readOnly: fieldDisabled } }}
                     />
                   ) : field.type === 'textarea' || field.type === 'rich-text' || field.type === 'text' ? (
                     <TextField 
@@ -317,11 +439,11 @@ export default function ItemEditorPage({ params }: { params: Promise<{ collectio
                       variant="outlined" 
                       value={formData[field.name] ?? ''}
                       onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                      slotProps={{ input: { readOnly: !canEdit } }}
+                      slotProps={{ input: { readOnly: fieldDisabled } }}
                     />
                   ) : field.type === 'boolean' ? (
                     <FormControlLabel
-                      control={<Switch color="primary" checked={!!formData[field.name]} onChange={(e) => setFormData({ ...formData, [field.name]: e.target.checked })} disabled={!canEdit} />}
+                      control={<Switch color="primary" checked={!!formData[field.name]} onChange={(e) => setFormData({ ...formData, [field.name]: e.target.checked })} disabled={fieldDisabled} />}
                       label={field.label}
                     />
                   ) : field.type === 'datetime' ? (
@@ -332,7 +454,23 @@ export default function ItemEditorPage({ params }: { params: Promise<{ collectio
                       variant="outlined"
                       value={formData[field.name] ? String(formData[field.name]).slice(0, 16) : ''}
                       onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                      slotProps={{ inputLabel: { shrink: true }, input: { readOnly: !canEdit } }}
+                      slotProps={{ inputLabel: { shrink: true }, input: { readOnly: fieldDisabled } }}
+                    />
+                  ) : field.type === 'file' ? (
+                    <MediaItemField
+                      label={field.label}
+                      value={formData[field.name] as FileItem | FileItem[] | string | null}
+                      onChange={(value) => setFormData({ ...formData, [field.name]: value })}
+                      disabled={fieldDisabled}
+                      mode="single"
+                      allowedTypes={['all']}
+                    />
+                  ) : field.type === 'chart' ? (
+                    <ChartField
+                      label={field.label}
+                      value={formData[field.name] as ChartConfig | null}
+                      onChange={(value) => setFormData({ ...formData, [field.name]: value })}
+                      disabled={fieldDisabled}
                     />
                   ) : (
                     <TextField 
@@ -341,11 +479,12 @@ export default function ItemEditorPage({ params }: { params: Promise<{ collectio
                       variant="outlined" 
                       value={formData[field.name] ?? ''}
                       onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                      slotProps={{ input: { readOnly: !canEdit } }}
+                      slotProps={{ input: { readOnly: fieldDisabled } }}
                     />
                   )}
                 </Grid>
-              ))}
+                );
+              })}
             </Grid>
           )}
 

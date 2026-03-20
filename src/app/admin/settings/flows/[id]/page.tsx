@@ -162,10 +162,10 @@ export default function FlowEditorPage({ params }: { params: Promise<{ id: strin
   };
 
   const handleDelete = async () => {
-    const ok = await confirm({ title: 'Delete Flow', message: `Delete flow "${flow.name}"? All operations and history will be lost.`, confirmText: 'Delete Flow', severity: 'error' });
+    const ok = await confirm({ title: 'Delete Flow', message: `Delete flow "${flow?.name}"? All operations and history will be lost.`, confirmText: 'Delete Flow', severity: 'error' });
     if (!ok) return;
-    deleteFlow(flowId);
-    addLog({ action: 'delete', collection: 'neurofy_flows', item: flowId, user: 'Admin User', meta: { name: flow.name } });
+    await deleteFlow(flowId);
+    addLog({ action: 'delete', collection: 'neurofy_flows', item: flowId, user: 'Admin User', meta: { name: flow?.name } });
     router.push('/admin/settings/flows');
   };
 

@@ -60,11 +60,26 @@ export async function POST(request: NextRequest) {
         permissions_json: JSON.stringify(permissionsPayload),
     });
 
+    // Fetch the newly created role to return proper data
+    const newRole = await db('neurofy_roles').where('id', id).first();
+
     await db('neurofy_activity').insert({
         action: 'create', user: auth.email, user_id: auth.userId,
         collection: 'neurofy_roles', item: id,
         meta_json: JSON.stringify({ name: body.name }),
     });
 
-    return NextResponse.json({ data: { id, ...body } }, { status: 201 });
+    // Return the actual role data from DB
+    return NextResponse.json({ 
+        data: {
+            id: newRole.id,
+            name: newRole.name,
+            description: newRole.description,
+            app_access: newRole.app_access,
+            admin_access: newRole.admin_access,
+            icon: newRole.icon,
+            user_count: 0,
+            permissions: JSON.parse(newRole.permissions_json || '{}'),
+        }
+    }, { status: 201 });
 }

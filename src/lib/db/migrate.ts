@@ -118,11 +118,18 @@ export async function runMigrations(db: Knex) {
         await db.schema.createTable('neurofy_webhooks', (t) => {
             t.string('id').primary();
             t.string('name').notNullable();
+            t.string('method').defaultTo('POST');
             t.string('url').notNullable();
-            t.text('events_json').defaultTo('[]'); // JSON array of event names
-            t.string('secret').notNullable();
-            t.timestamp('last_triggered_at').nullable();
+            t.text('collections_json').defaultTo('[]');
+            t.text('events_json').defaultTo('[]');
+            t.text('headers_json').defaultTo('[]');
+            t.text('auth_json').defaultTo('{"type":"none"}');
+            t.string('status').defaultTo('active');
+            t.string('secret').nullable();
+            t.float('success_rate').defaultTo(100);
+            t.timestamp('last_triggered').nullable();
             t.timestamp('created_at').defaultTo(db.fn.now());
+            t.timestamp('updated_at').defaultTo(db.fn.now());
         });
     }
 
@@ -152,6 +159,7 @@ export async function runMigrations(db: Knex) {
             t.string('default_locale').defaultTo('en-US');
             t.string('default_timezone').defaultTo('UTC');
             t.string('theme').defaultTo('dark');
+            t.string('theme_preset').defaultTo('midnight');
             t.string('default_font').defaultTo('Inter');
             t.integer('default_page_size').defaultTo(25);
             t.string('default_sort_field').defaultTo('id');
@@ -159,7 +167,32 @@ export async function runMigrations(db: Knex) {
             t.string('date_format').defaultTo('YYYY-MM-DD');
             t.string('number_format').defaultTo('comma');
             t.text('feature_flags_json').defaultTo('{}');
+            t.text('custom_themes_json').nullable();
+            // Store SEO settings as a JSON blob to avoid schema churn.
+            t.text('seo_json').nullable();
         });
+    } else {
+        // Add theme_preset column if it doesn't exist
+        const hasThemePreset = await db.schema.hasColumn('neurofy_settings', 'theme_preset');
+        if (!hasThemePreset) {
+            await db.schema.alterTable('neurofy_settings', (t) => {
+                t.string('theme_preset').defaultTo('midnight');
+            });
+        }
+        // Add custom_themes_json column if it doesn't exist
+        const hasCustomThemes = await db.schema.hasColumn('neurofy_settings', 'custom_themes_json');
+        if (!hasCustomThemes) {
+            await db.schema.alterTable('neurofy_settings', (t) => {
+                t.text('custom_themes_json').nullable();
+            });
+        }
+        // Add seo_json column if it doesn't exist
+        const hasSeoJson = await db.schema.hasColumn('neurofy_settings', 'seo_json');
+        if (!hasSeoJson) {
+            await db.schema.alterTable('neurofy_settings', (t) => {
+                t.text('seo_json').nullable();
+            });
+        }
     }
 
     // ---- neurofy_collections_meta (extra metadata per collection) ----
@@ -269,6 +302,25 @@ export async function runMigrations(db: Knex) {
             t.timestamp('created_at').defaultTo(db.fn.now());
             t.timestamp('updated_at').defaultTo(db.fn.now());
             t.unique(['collection', 'item_id', 'field', 'locale']);
+        });
+    }
+
+    // ---- field_comments (field-level comments for collaborative editing) ----
+    if (!(await db.schema.hasTable('field_comments'))) {
+        await db.schema.createTable('field_comments', (t) => {
+            t.string('id').primary();
+            t.string('collection').notNullable();
+            t.string('item_id').notNullable();
+            t.string('field_name').notNullable();
+            t.string('user_id').notNullable();
+            t.string('user_name').notNullable();
+            t.string('user_avatar').nullable();
+            t.text('content').notNullable();
+            t.boolean('resolved').defaultTo(false);
+            t.string('resolved_by').nullable();
+            t.timestamp('resolved_at').nullable();
+            t.timestamp('created_at').defaultTo(db.fn.now());
+            t.index(['collection', 'item_id']);
         });
     }
 
