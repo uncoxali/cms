@@ -20,6 +20,39 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Deployment
+
+For deployment instructions, see [DEPLOY.md](DEPLOY.md).
+
+### Quick Deploy to Server (91.107.255.10)
+
+```bash
+# Option 1: Simple deployment with systemd
+./deploy.sh
+
+# Option 2: Deployment with PM2
+./deploy-pm2.sh
+
+# Option 3: Deployment with Nginx + PM2 (Recommended)
+./deploy-nginx.sh
+```
+
+### Management Scripts
+
+```bash
+# Check status
+./status.sh
+
+# View logs
+./logs.sh
+
+# Backup
+./backup.sh
+
+# Restore
+./restore.sh <backup_file>
+```
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Fab from '@mui/material/Fab';
 import Drawer from '@mui/material/Drawer';
@@ -8,397 +8,582 @@ import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import Avatar from '@mui/material/Avatar';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemButton from '@mui/material/ListItemButton';
-import ListItemAvatar from '@mui/material/ListItemAvatar';
-import ListItemText from '@mui/material/ListItemText';
-import Badge from '@mui/material/Badge';
 import Button from '@mui/material/Button';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import InputAdornment from '@mui/material/InputAdornment';
-import Chip from '@mui/material/Chip';
-import CircularProgress from '@mui/material/CircularProgress';
+import Tooltip from '@mui/material/Tooltip';
+import LinearProgress from '@mui/material/LinearProgress';
 import Alert from '@mui/material/Alert';
+import { alpha, useTheme } from '@mui/material/styles';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
-  MessageCircle, X, Send, Plus, ArrowLeft, Users, Circle,
+  Bot, X, Send, Paperclip, Copy, Check, Sparkles,
+  MessageCircle, Trash2, StopCircle,
+  FileText, User, RefreshCw,
 } from 'lucide-react';
-import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
-import { useRealtime } from './RealtimeProvider';
-import { useTranslation } from '@/lib/i18n';
 
-interface ChatRoom {
-  id: string;
-  name: string;
-  type: string;
-  members: string[];
+interface ChatMsg {
+  role: 'user' | 'model';
+  content: string;
+  file?: { name: string; mimeType: string; data: string; preview?: string };
+  timestamp: number;
 }
 
-interface ChatMessage {
-  id: number;
-  room_id: string;
-  user_id: string;
-  user_email: string | null;
-  message: string;
-  type: string;
-  created_at: string;
+const STORAGE_KEY = 'neurofy-ai-chat-history';
+
+const SUGGESTIONS = [
+  'How do I create a new collection?',
+  'Explain the data model in this CMS',
+  'How can I set up webhooks?',
+  'What features are available?',
+];
+
+function TypingDots() {
+  return (
+    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', p: 1 }}>
+      {[0, 1, 2].map((i) => (
+        <Box
+          key={i}
+          sx={{
+            width: 7, height: 7, borderRadius: '50%', bgcolor: 'text.secondary',
+            animation: 'typingBounce 1.4s infinite ease-in-out',
+            animationDelay: `${i * 0.2}s`,
+            '@keyframes typingBounce': {
+              '0%, 80%, 100%': { opacity: 0.3, transform: 'scale(0.8)' },
+              '40%': { opacity: 1, transform: 'scale(1)' },
+            },
+          }}
+        />
+      ))}
+    </Box>
+  );
+}
+
+function MarkdownContent({ content }: { content: string }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+
+  return (
+    <Box
+      className="ai-markdown"
+      sx={{
+        fontSize: 14, lineHeight: 1.7,
+        '& p': { m: 0, mb: 1, '&:last-child': { mb: 0 } },
+        '& h1, & h2, & h3, & h4': { mt: 1.5, mb: 0.5, fontWeight: 700 },
+        '& h1': { fontSize: 20 }, '& h2': { fontSize: 17 }, '& h3': { fontSize: 15 },
+        '& ul, & ol': { pl: 2.5, mb: 1, mt: 0.5 },
+        '& li': { mb: 0.25 },
+        '& code': {
+          px: 0.75, py: 0.25, borderRadius: '4px', fontSize: 13, fontFamily: 'monospace',
+          bgcolor: alpha('#8B5CF6', isDark ? 0.2 : 0.08),
+        },
+        '& pre': { m: 0, mt: 1, mb: 1, p: 1.5, borderRadius: '8px', overflow: 'auto', bgcolor: isDark ? alpha('#000', 0.3) : '#1e1e2e' },
+        '& pre code': { bgcolor: 'transparent', p: 0, fontSize: 12.5, color: '#e0def4' },
+        '& blockquote': { m: 0, mt: 0.5, mb: 0.5, pl: 2, borderLeft: '3px solid #8B5CF6', color: 'text.secondary' },
+        '& table': { width: '100%', borderCollapse: 'collapse', mt: 1, mb: 1, fontSize: 13 },
+        '& th, & td': { p: 1, border: `1px solid ${alpha('#8B5CF6', 0.2)}`, textAlign: 'left' },
+        '& th': { bgcolor: alpha('#8B5CF6', 0.08), fontWeight: 600 },
+        '& a': { color: '#8B5CF6', textDecoration: 'underline' },
+        '& strong': { fontWeight: 700 },
+        '& hr': { border: 'none', borderTop: `1px solid ${alpha('#8B5CF6', 0.15)}`, my: 1.5 },
+      }}
+    >
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+    </Box>
+  );
+}
+
+function MessageBubble({ msg, isStreaming, onCopy }: { msg: ChatMsg; isStreaming: boolean; onCopy: (text: string) => void }) {
+  const isUser = msg.role === 'user';
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    onCopy(msg.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Box sx={{
+      display: 'flex', gap: 1.5, mb: 2,
+      flexDirection: isUser ? 'row-reverse' : 'row', alignItems: 'flex-start',
+      animation: 'fadeInUp 300ms ease-out',
+      '@keyframes fadeInUp': { from: { opacity: 0, transform: 'translateY(8px)' }, to: { opacity: 1, transform: 'translateY(0)' } },
+    }}>
+      <Avatar sx={{
+        width: 32, height: 32, flexShrink: 0, mt: 0.5,
+        bgcolor: isUser ? '#8B5CF6' : alpha('#8B5CF6', 0.1),
+        color: isUser ? '#fff' : '#8B5CF6',
+      }}>
+        {isUser ? <User size={16} /> : <Bot size={16} />}
+      </Avatar>
+
+      <Box sx={{ maxWidth: '82%', minWidth: 0 }}>
+        {!isUser && (
+          <Typography fontSize={11} color="text.secondary" fontWeight={600} sx={{ mb: 0.5, ml: 0.5 }}>AI Assistant</Typography>
+        )}
+
+        {msg.file && (
+          <Box sx={{ mb: 1, p: 1.5, borderRadius: '10px', bgcolor: alpha('#8B5CF6', 0.06), display: 'flex', alignItems: 'center', gap: 1 }}>
+            {msg.file.mimeType.startsWith('image/') && msg.file.preview ? (
+              <Box component="img" src={msg.file.preview} sx={{ width: 40, height: 40, borderRadius: '6px', objectFit: 'cover' }} />
+            ) : (
+              <FileText size={20} />
+            )}
+            <Typography fontSize={12} fontWeight={500} noWrap sx={{ maxWidth: 180 }}>{msg.file.name}</Typography>
+          </Box>
+        )}
+
+        <Box sx={{
+          px: 2, py: 1.5,
+          borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+          ...(isUser
+            ? { background: 'linear-gradient(135deg, #8B5CF6, #7C3AED)', color: '#fff' }
+            : { bgcolor: alpha('#8B5CF6', 0.04), border: `1px solid ${alpha('#8B5CF6', 0.1)}`, color: 'text.primary' }),
+        }}>
+          {isUser ? (
+            <Typography fontSize={14} sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.6 }}>{msg.content}</Typography>
+          ) : (
+            <MarkdownContent content={msg.content || '...'} />
+          )}
+        </Box>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, ml: 0.5, justifyContent: isUser ? 'flex-end' : 'flex-start' }}>
+          <Typography fontSize={10} color="text.secondary">
+            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </Typography>
+          {!isUser && !isStreaming && msg.content && (
+            <Tooltip title={copied ? 'Copied!' : 'Copy'}>
+              <IconButton size="small" onClick={handleCopy} sx={{ p: 0.25 }}>
+                {copied ? <Check size={13} color="#10B981" /> : <Copy size={13} />}
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
+      </Box>
+    </Box>
+  );
 }
 
 export default function ChatWidget() {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const [open, setOpen] = useState(false);
-  const [rooms, setRooms] = useState<ChatRoom[]>([]);
-  const [activeRoom, setActiveRoom] = useState<ChatRoom | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState('');
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [newRoomName, setNewRoomName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [file, setFile] = useState<{ name: string; mimeType: string; data: string; preview?: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const user = useAuthStore((s) => s.user);
-  const { on, send, onlineUsers } = useRealtime();
-  const { t } = useTranslation();
 
-  const fetchRooms = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  // Load from localStorage
+  useEffect(() => {
     try {
-      const res = await api.get<{ data: ChatRoom[] }>('/chat/rooms');
-      setRooms(res.data || []);
-    } catch (err: any) {
-      console.error('[Chat] fetchRooms error:', err);
-      setError(err.message || 'Failed to load rooms');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const fetchMessages = useCallback(async (roomId: string) => {
-    try {
-      const res = await api.get<{ data: ChatMessage[] }>('/chat/messages', { room_id: roomId });
-      setMessages(res.data || []);
-    } catch (err: any) {
-      console.error('[Chat] fetchMessages error:', err);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (open) fetchRooms();
-  }, [open, fetchRooms]);
-
-  useEffect(() => {
-    if (activeRoom) {
-      fetchMessages(activeRoom.id);
-      send('join_room', {}, `chat:${activeRoom.id}`);
-    }
-  }, [activeRoom, fetchMessages, send]);
-
-  useEffect(() => {
-    const unsub = on('chat:message', (msg) => {
-      if (msg.room === `chat:${activeRoom?.id}` && msg.userId !== user?.id) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now(),
-            room_id: activeRoom!.id,
-            user_id: msg.data.userId as string,
-            user_email: msg.data.email as string,
-            message: msg.data.message as string,
-            type: 'text',
-            created_at: msg.timestamp,
-          },
-        ]);
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) setMessages(parsed);
       }
-    });
-    return unsub;
-  }, [on, activeRoom, user?.id]);
+    } catch { /* ignore */ }
+  }, []);
 
+  // Save to localStorage
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.map(({ file: _f, ...r }) => r)));
+      } catch { /* ignore */ }
+    }
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim() || !activeRoom) return;
-    const msgText = input.trim();
-    setInput('');
+  // Auto-scroll
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
 
-    const optimisticMsg: ChatMessage = {
-      id: Date.now(),
-      room_id: activeRoom.id,
-      user_id: user?.id || '',
-      user_email: user?.email || '',
-      message: msgText,
-      type: 'text',
-      created_at: new Date().toISOString(),
+  const clearChat = () => {
+    setMessages([]);
+    setError(null);
+    localStorage.removeItem(STORAGE_KEY);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(',')[1];
+      setFile({ name: selected.name, mimeType: selected.type, data: base64, preview: selected.type.startsWith('image/') ? reader.result as string : undefined });
     };
-    setMessages((prev) => [...prev, optimisticMsg]);
+    reader.readAsDataURL(selected);
+    e.target.value = '';
+  };
 
-    try {
-      await api.post('/chat/messages', { room_id: activeRoom.id, message: msgText });
-      send('chat:message', { message: msgText, email: user?.email, userId: user?.id }, `chat:${activeRoom.id}`);
-    } catch (err: any) {
-      console.error('[Chat] send error:', err);
-      setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id));
+  const stopGeneration = () => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
     }
   };
 
-  const handleCreateRoom = async () => {
-    if (!newRoomName.trim()) return;
+  const handleSend = async (text?: string) => {
+    const msgText = text || input.trim();
+    if (!msgText || loading) return;
+
     setError(null);
+    const userMsg: ChatMsg = { role: 'user', content: msgText, file: file || undefined, timestamp: Date.now() };
+    const currentFile = file;
+
+    setMessages((prev) => [...prev, userMsg]);
+    setInput('');
+    setFile(null);
+    setLoading(true);
+    setStreaming(true);
+
+    const historyForApi = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
+    const abortController = new AbortController();
+    abortRef.current = abortController;
+
+    let accumulated = '';
+    let gotAnyResponse = false;
+
     try {
-      const res = await api.post<{ data: ChatRoom }>('/chat/rooms', { name: newRoomName, type: 'group' });
-      setCreateDialogOpen(false);
-      setNewRoomName('');
-      fetchRooms();
-      if (res.data) setActiveRoom(res.data);
-    } catch (err: any) {
-      console.error('[Chat] createRoom error:', err);
-      setError(err.message || 'Failed to create room');
+      const token = useAuthStore.getState().token;
+      const res = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          messages: historyForApi,
+          file: currentFile ? { mimeType: currentFile.mimeType, data: currentFile.data } : undefined,
+        }),
+        signal: abortController.signal,
+      });
+
+      // Check for non-streaming error response
+      const contentType = res.headers.get('content-type') || '';
+      if (!res.ok || !contentType.includes('text/event-stream')) {
+        let errMsg = `Server error (${res.status})`;
+        try {
+          const errData = await res.json();
+          errMsg = errData.error || errMsg;
+        } catch { /* not json */ }
+        throw new Error(errMsg);
+      }
+
+      // Add empty model message placeholder
+      setMessages((prev) => [...prev, { role: 'model', content: '', timestamp: Date.now() }]);
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error('No response stream available');
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process complete SSE lines
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+
+          const jsonStr = trimmed.slice(6);
+          if (!jsonStr) continue;
+
+          try {
+            const data = JSON.parse(jsonStr);
+
+            if (data.text) {
+              gotAnyResponse = true;
+              accumulated += data.text;
+              setMessages((prev) => {
+                const updated = [...prev];
+                const last = updated[updated.length - 1];
+                if (last && last.role === 'model') {
+                  updated[updated.length - 1] = { ...last, content: accumulated };
+                }
+                return updated;
+              });
+            }
+
+            if (data.error) {
+              throw new Error(data.error);
+            }
+
+            if (data.done) {
+              // Stream completed successfully
+            }
+          } catch (parseErr) {
+            // Only throw if it's a real error, not a JSON parse issue on empty/done messages
+            if (parseErr instanceof Error && parseErr.message !== 'Stream interrupted') {
+              // Ignore parse errors for non-critical data
+            }
+          }
+        }
+      }
+
+      // Process any remaining buffer
+      if (buffer.trim()) {
+        const trimmed = buffer.trim();
+        if (trimmed.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(trimmed.slice(6));
+            if (data.text) {
+              accumulated += data.text;
+              gotAnyResponse = true;
+            }
+            if (data.error) throw new Error(data.error);
+          } catch { /* ignore final buffer parse errors */ }
+        }
+      }
+
+      if (!gotAnyResponse && !accumulated) {
+        setMessages((prev) => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          if (last && last.role === 'model' && !last.content) {
+            updated[updated.length - 1] = { ...last, content: 'Sorry, I could not generate a response. Please try again.' };
+          }
+          return updated;
+        });
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Something went wrong';
+
+      if (err instanceof Error && err.name === 'AbortError') {
+        setMessages((prev) => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          if (last && last.role === 'model' && !last.content) {
+            updated[updated.length - 1] = { ...last, content: accumulated || 'Generation stopped.' };
+          } else if (!gotAnyResponse) {
+            // No model message yet, add one
+            updated.push({ role: 'model', content: accumulated || 'Generation stopped.', timestamp: Date.now() });
+          }
+          return updated;
+        });
+      } else {
+        setError(errorMessage);
+        // Remove empty model message if we got an error before any response
+        setMessages((prev) => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          if (last && last.role === 'model' && !last.content) {
+            updated.pop();
+          }
+          return updated;
+        });
+      }
+    } finally {
+      setLoading(false);
+      setStreaming(false);
+      abortRef.current = null;
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  };
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text).catch(() => { /* clipboard not available */ });
   };
 
   return (
     <>
       <Fab
-        color="primary"
-        size="medium"
         onClick={() => setOpen(true)}
         sx={{
-          position: 'fixed',
-          bottom: 24,
-          right: 24,
-          zIndex: 1300,
-          background: 'linear-gradient(135deg, #6644ff, #5533dd)',
-          boxShadow: '0 4px 20px rgba(102, 68, 255, 0.4)',
+          position: 'fixed', bottom: 24, right: 24, zIndex: 1300,
+          width: 56, height: 56,
+          background: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)',
+          boxShadow: '0 8px 32px rgba(139, 92, 246, 0.4)',
+          transition: 'all 300ms ease',
+          '&:hover': { background: 'linear-gradient(135deg, #7C3AED 0%, #5B21B6 100%)', transform: 'scale(1.08)', boxShadow: '0 12px 40px rgba(139, 92, 246, 0.5)' },
         }}
       >
-        <MessageCircle size={22} />
+        <Sparkles size={24} color="#fff" />
       </Fab>
 
       <Drawer
         anchor="right"
         open={open}
         onClose={() => setOpen(false)}
-        sx={{
-          '& .MuiDrawer-paper': {
-            width: 380,
-            bgcolor: 'background.paper',
-          },
-        }}
+        sx={{ '& .MuiDrawer-paper': { width: { xs: '100%', sm: 440 }, bgcolor: 'background.default', backgroundImage: 'none' } }}
       >
-        {activeRoom ? (
-          <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1, borderBottom: 1, borderColor: 'divider' }}>
-              <IconButton size="small" onClick={() => setActiveRoom(null)}>
-                <ArrowLeft size={18} />
-              </IconButton>
-              <Box sx={{ flexGrow: 1 }}>
-                <Typography fontWeight={700} fontSize={14}>{activeRoom.name}</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {activeRoom.members.length} members
-                </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          {/* Header */}
+          <Box sx={{ px: 2.5, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box sx={{ width: 38, height: 38, borderRadius: '12px', background: 'linear-gradient(135deg, #8B5CF6, #EC4899)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Sparkles size={20} color="#fff" />
               </Box>
-              <IconButton size="small" onClick={() => setOpen(false)}>
-                <X size={18} />
-              </IconButton>
+              <Box>
+                <Typography fontWeight={700} fontSize={15}>AI Assistant</Typography>
+                <Typography fontSize={11} color="text.secondary">Powered by Llama 3.3</Typography>
+              </Box>
             </Box>
-
-            <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {messages.length === 0 && (
-                <Box sx={{ textAlign: 'center', py: 4 }}>
-                  <Typography variant="body2" color="text.secondary">{t('chat.noMessages')}</Typography>
-                </Box>
+            <Box sx={{ display: 'flex', gap: 0.5 }}>
+              {messages.length > 0 && (
+                <Tooltip title="New Chat">
+                  <IconButton size="small" onClick={clearChat} sx={{ color: 'text.secondary' }}><Trash2 size={16} /></IconButton>
+                </Tooltip>
               )}
-              {messages.map((msg) => {
-                const isOwn = msg.user_id === user?.id;
-                const isSystem = msg.type === 'system';
-
-                if (isSystem) {
-                  return (
-                    <Box key={msg.id} sx={{ textAlign: 'center', py: 0.5 }}>
-                      <Chip label={msg.message} size="small" sx={{ fontSize: 11, height: 22, bgcolor: 'action.hover' }} />
-                    </Box>
-                  );
-                }
-
-                return (
-                  <Box
-                    key={msg.id}
-                    sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: isOwn ? 'flex-end' : 'flex-start',
-                    }}
-                  >
-                    {!isOwn && (
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.25, fontSize: 10 }}>
-                        {msg.user_email || msg.user_id}
-                      </Typography>
-                    )}
-                    <Box
-                      sx={{
-                        maxWidth: '80%',
-                        px: 1.5,
-                        py: 1,
-                        borderRadius: isOwn ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
-                        bgcolor: isOwn ? 'primary.main' : 'action.hover',
-                        color: isOwn ? '#fff' : 'text.primary',
-                      }}
-                    >
-                      <Typography fontSize={13} sx={{ wordBreak: 'break-word' }}>{msg.message}</Typography>
-                    </Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.25, fontSize: 10 }}>
-                      {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </Typography>
-                  </Box>
-                );
-              })}
-              <div ref={messagesEndRef} />
-            </Box>
-
-            <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
-              <TextField
-                fullWidth
-                size="small"
-                placeholder={t('chat.typeMessage')}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                slotProps={{
-                  input: {
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton size="small" onClick={handleSend} disabled={!input.trim()} color="primary">
-                          <Send size={16} />
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  },
-                }}
-              />
+              <IconButton size="small" onClick={() => setOpen(false)} sx={{ color: 'text.secondary' }}><X size={18} /></IconButton>
             </Box>
           </Box>
-        ) : (
-          <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 1, borderColor: 'divider' }}>
-              <Typography fontWeight={700} fontSize={16}>{t('chat.title')}</Typography>
-              <Box sx={{ display: 'flex', gap: 0.5 }}>
-                <IconButton size="small" onClick={() => setCreateDialogOpen(true)}>
-                  <Plus size={18} />
-                </IconButton>
-                <IconButton size="small" onClick={() => setOpen(false)}>
-                  <X size={18} />
-                </IconButton>
-              </Box>
-            </Box>
 
+          {loading && <LinearProgress sx={{ height: 2, '& .MuiLinearProgress-bar': { bgcolor: '#8B5CF6' }, '&.MuiLinearProgress-root': { bgcolor: alpha('#8B5CF6', 0.1) } }} />}
+
+          {/* Messages Area */}
+          <Box sx={{ flexGrow: 1, overflowY: 'auto', px: 2.5, py: 2, display: 'flex', flexDirection: 'column', '&::-webkit-scrollbar': { width: 6 }, '&::-webkit-scrollbar-thumb': { borderRadius: 3, bgcolor: alpha('#8B5CF6', 0.2) } }}>
+            {/* Error Alert */}
             {error && (
-              <Alert severity="error" onClose={() => setError(null)} sx={{ mx: 2, mt: 1, borderRadius: '8px' }}>
+              <Alert
+                severity="error"
+                onClose={() => setError(null)}
+                sx={{ mb: 2, borderRadius: '12px', '& .MuiAlert-message': { fontSize: 13 } }}
+                action={
+                  <IconButton size="small" onClick={() => handleSend()} sx={{ color: 'inherit' }}>
+                    <RefreshCw size={14} />
+                  </IconButton>
+                }
+              >
                 {error}
               </Alert>
             )}
 
-            {onlineUsers.length > 0 && (
-              <Box sx={{ px: 2, py: 1, borderBottom: 1, borderColor: 'divider' }}>
-                <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                  {t('chat.online')} ({onlineUsers.length})
+            {messages.length === 0 ? (
+              /* Empty State */
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', textAlign: 'center', px: 3 }}>
+                <Box sx={{ width: 72, height: 72, borderRadius: '20px', background: `linear-gradient(135deg, ${alpha('#8B5CF6', 0.15)}, ${alpha('#EC4899', 0.15)})`, display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2.5 }}>
+                  <Sparkles size={32} color="#8B5CF6" />
+                </Box>
+                <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>Hey{user?.name ? `, ${user.name}` : ''}!</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 280 }}>
+                  I&apos;m your AI assistant. Ask me anything about your CMS project.
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
-                  {onlineUsers.map((uid) => (
-                    <Badge
-                      key={uid}
-                      overlap="circular"
-                      anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                      badgeContent={<Circle size={8} fill="#22C55E" color="#22C55E" />}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '100%', maxWidth: 320 }}>
+                  {SUGGESTIONS.map((suggestion) => (
+                    <Button
+                      key={suggestion}
+                      variant="outlined"
+                      size="small"
+                      onClick={() => handleSend(suggestion)}
+                      sx={{
+                        justifyContent: 'flex-start', textAlign: 'left', borderRadius: '12px', px: 2, py: 1.25, fontSize: 13, textTransform: 'none',
+                        borderColor: alpha('#8B5CF6', isDark ? 0.3 : 0.2), color: 'text.primary',
+                        '&:hover': { borderColor: '#8B5CF6', bgcolor: alpha('#8B5CF6', 0.05) },
+                      }}
+                      startIcon={<MessageCircle size={15} style={{ color: '#8B5CF6', flexShrink: 0 }} />}
                     >
-                      <Avatar sx={{ width: 28, height: 28, fontSize: 11, bgcolor: 'primary.main' }}>
-                        {uid.charAt(0).toUpperCase()}
-                      </Avatar>
-                    </Badge>
+                      {suggestion}
+                    </Button>
                   ))}
                 </Box>
               </Box>
+            ) : (
+              /* Messages */
+              <>
+                {messages.map((msg, i) => (
+                  <MessageBubble
+                    key={`${i}-${msg.timestamp}`}
+                    msg={msg}
+                    isStreaming={streaming && i === messages.length - 1 && msg.role === 'model'}
+                    onCopy={handleCopy}
+                  />
+                ))}
+                {loading && (messages.length === 0 || messages[messages.length - 1]?.role === 'user' || !messages[messages.length - 1]?.content) && (
+                  <Box sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
+                    <Avatar sx={{ width: 32, height: 32, bgcolor: alpha('#8B5CF6', 0.1), color: '#8B5CF6' }}><Bot size={16} /></Avatar>
+                    <Box sx={{ px: 2, py: 1, borderRadius: '16px 16px 16px 4px', bgcolor: alpha('#8B5CF6', isDark ? 0.08 : 0.04), border: `1px solid ${alpha('#8B5CF6', isDark ? 0.15 : 0.1)}` }}>
+                      <TypingDots />
+                    </Box>
+                  </Box>
+                )}
+                <div ref={messagesEndRef} />
+              </>
             )}
-
-            <List sx={{ flexGrow: 1, overflowY: 'auto', p: 0 }}>
-              {loading ? (
-                <Box sx={{ textAlign: 'center', py: 6 }}>
-                  <CircularProgress size={28} />
-                </Box>
-              ) : rooms.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 6 }}>
-                  <Users size={36} style={{ opacity: 0.15 }} />
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                    {t('chat.noMessages')}
-                  </Typography>
-                  <Button
-                    size="small"
-                    startIcon={<Plus size={14} />}
-                    onClick={() => setCreateDialogOpen(true)}
-                    sx={{ mt: 1 }}
-                  >
-                    {t('chat.newConversation')}
-                  </Button>
-                </Box>
-              ) : (
-                rooms.map((room) => (
-                  <ListItem key={room.id} disablePadding>
-                    <ListItemButton onClick={() => setActiveRoom(room)} sx={{ px: 2, py: 1.5 }}>
-                      <ListItemAvatar>
-                        <Avatar sx={{ bgcolor: 'primary.dark', width: 36, height: 36 }}>
-                          {room.type === 'direct' ? <MessageCircle size={18} /> : <Users size={18} />}
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={room.name}
-                        secondary={`${room.members.length} members`}
-                        slotProps={{
-                          primary: { fontSize: 13, fontWeight: 600 },
-                          secondary: { fontSize: 11 },
-                        }}
-                      />
-                    </ListItemButton>
-                  </ListItem>
-                ))
-              )}
-            </List>
           </Box>
-        )}
-      </Drawer>
 
-      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>{t('chat.newConversation')}</DialogTitle>
-        <DialogContent>
-          {error && (
-            <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2, borderRadius: '8px' }}>
-              {error}
-            </Alert>
+          {/* File Preview */}
+          {file && (
+            <Box sx={{ px: 2.5, pb: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '12px', bgcolor: alpha('#8B5CF6', isDark ? 0.1 : 0.05), border: `1px solid ${alpha('#8B5CF6', 0.15)}` }}>
+                {file.preview ? (
+                  <Box component="img" src={file.preview} sx={{ width: 40, height: 40, borderRadius: '8px', objectFit: 'cover' }} />
+                ) : (
+                  <FileText size={24} color="#8B5CF6" />
+                )}
+                <Typography fontSize={13} fontWeight={500} sx={{ flex: 1 }} noWrap>{file.name}</Typography>
+                <IconButton size="small" onClick={() => setFile(null)}><X size={14} /></IconButton>
+              </Box>
+            </Box>
           )}
-          <TextField
-            fullWidth
-            label="Room Name"
-            value={newRoomName}
-            onChange={(e) => setNewRoomName(e.target.value)}
-            sx={{ mt: 1 }}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleCreateRoom(); }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCreateDialogOpen(false)}>{t('common.cancel')}</Button>
-          <Button variant="contained" onClick={handleCreateRoom}>{t('common.create')}</Button>
-        </DialogActions>
-      </Dialog>
+
+          {/* Input Area */}
+          <Box sx={{ px: 2.5, py: 2, borderTop: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper' }}>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
+              <input ref={fileInputRef} type="file" hidden onChange={handleFileSelect} accept="image/*,.pdf,.txt,.csv,.json,.md" />
+              <Tooltip title="Attach file">
+                <IconButton size="small" onClick={() => fileInputRef.current?.click()} disabled={loading} sx={{ color: 'text.secondary', mb: 0.5, '&:hover': { color: '#8B5CF6', bgcolor: alpha('#8B5CF6', 0.08) } }}>
+                  <Paperclip size={18} />
+                </IconButton>
+              </Tooltip>
+
+              <TextField
+                fullWidth multiline maxRows={4} size="small"
+                placeholder="Ask me anything..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={loading}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '14px', fontSize: 14, '&.Mui-focused': { '& .MuiOutlinedInput-notchedOutline': { borderColor: '#8B5CF6', borderWidth: 1.5 } } } }}
+              />
+
+              {loading ? (
+                <Tooltip title="Stop">
+                  <IconButton onClick={stopGeneration} sx={{ bgcolor: alpha('#EF4444', 0.1), color: '#EF4444', mb: 0.5, '&:hover': { bgcolor: alpha('#EF4444', 0.2) } }}>
+                    <StopCircle size={20} />
+                  </IconButton>
+                </Tooltip>
+              ) : (
+                <Tooltip title="Send">
+                  <IconButton
+                    onClick={() => handleSend()}
+                    disabled={!input.trim() && !file}
+                    sx={{
+                      bgcolor: input.trim() || file ? '#8B5CF6' : alpha('#8B5CF6', 0.1),
+                      color: input.trim() || file ? '#fff' : '#8B5CF6',
+                      mb: 0.5,
+                      '&:hover': { bgcolor: input.trim() || file ? '#7C3AED' : alpha('#8B5CF6', 0.15) },
+                      '&.Mui-disabled': { color: alpha('#8B5CF6', 0.3) },
+                    }}
+                  >
+                    <Send size={18} />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+            <Typography fontSize={10} color="text.secondary" sx={{ mt: 1, textAlign: 'center' }}>
+              Gemma 3n (OpenRouter) &middot; Fast &amp; Low Cost
+            </Typography>
+          </Box>
+        </Box>
+      </Drawer>
     </>
   );
 }
