@@ -2,10 +2,17 @@ import knex from 'knex';
 import { config } from './index';
 
 const db = knex({
-    client: 'better-sqlite3',
-    connection: {
-        filename: config.dbPath,
-    },
+    client: config.dbClient === 'mysql' || config.dbClient === 'mysql2' ? 'mysql2' : 'better-sqlite3',
+    connection: config.dbClient === 'mysql' || config.dbClient === 'mysql2' 
+        ? {
+            host: config.dbHost,
+            user: config.dbUser,
+            password: config.dbPassword,
+            database: config.dbName,
+        }
+        : {
+            filename: config.dbPath,
+        },
     useNullAsDefault: true,
 });
 
