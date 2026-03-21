@@ -53,16 +53,16 @@ export default function ItemEditorPage({ params }: { params: Promise<{ collectio
 
   // Fetch role permissions
   useEffect(() => {
-    if (role) {
-      fetchRolePermissions(role);
+    if (user?.role_id) {
+      fetchRolePermissions(user.role_id);
     }
-  }, [role, fetchRolePermissions]);
+  }, [user?.role_id, fetchRolePermissions]);
 
   // Get field permissions for current collection
   const fieldPerms = useMemo(() => {
-    if (!role) return {};
-    return permissions[role]?.collections?.[collection]?.fields || {};
-  }, [permissions, role, collection]);
+    if (!user?.role_id) return {};
+    return permissions[user.role_id]?.collections?.[collection]?.fields || {};
+  }, [permissions, user?.role_id, collection]);
 
   // Get validation rules for current collection
   const collectionValidationRules = useMemo(() => {
@@ -71,14 +71,14 @@ export default function ItemEditorPage({ params }: { params: Promise<{ collectio
 
   // Check if field should be hidden
   const isFieldHidden = (fieldName: string) => {
-    if (!role || !canEdit) return false;
-    return !checkFieldAccess(role, collection, fieldName, 'read');
+    if (!user?.role_id || !canEdit) return false;
+    return !checkFieldAccess(user.role_id, collection, fieldName, 'read');
   };
 
   // Check if field is read-only
   const isFieldReadOnly = (fieldName: string) => {
-    if (!role || !canEdit) return false;
-    const hasWrite = checkFieldAccess(role, collection, fieldName, 'write');
+    if (!user?.role_id || !canEdit) return false;
+    const hasWrite = checkFieldAccess(user.role_id, collection, fieldName, 'write');
     return !hasWrite;
   };
 
