@@ -25,10 +25,12 @@ export async function getItems(req: AuthenticatedRequest, res: Response) {
         }
 
         if (search) {
-            const columns = await db.raw(`PRAGMA table_info('${collection}')`);
-            const textCols = columns
-                .filter((c: any) => ['TEXT', 'VARCHAR', 'CHAR', ''].includes((c.type || '').toUpperCase().split('(')[0]))
-                .map((c: any) => c.name);
+            const columnsInfo = await db(collection).columnInfo() as Record<string, any>;
+            const textCols = Object.entries(columnsInfo)
+                .filter(([_, info]: [string, any]) => 
+                    ['text', 'varchar', 'char', 'string'].includes((info.type || '').toLowerCase())
+                )
+                .map(([name, _]) => name);
 
             if (textCols.length > 0) {
                 query = query.where(function (this: any) {
@@ -176,8 +178,8 @@ export async function createItem(req: AuthenticatedRequest, res: Response) {
         const exists = await db.schema.hasTable(collection);
         if (!exists) return res.status(404).json({ error: 'Collection not found' });
 
-        const columns = await db.raw(`PRAGMA table_info('${collection}')`);
-        const colNames = columns.map((c: any) => c.name);
+        const columnsInfo = await db(collection).columnInfo() as Record<string, any>;
+        const colNames = Object.keys(columnsInfo);
         if (colNames.includes('date_created')) body.date_created = new Date().toISOString();
         if (colNames.includes('date_updated')) body.date_updated = new Date().toISOString();
 
@@ -229,8 +231,8 @@ export async function updateItem(req: AuthenticatedRequest, res: Response) {
         const existing = await db(collection).where('id', id).first();
         if (!existing) return res.status(404).json({ error: 'Item not found' });
 
-        const columns = await db.raw(`PRAGMA table_info('${collection}')`);
-        const colNames = columns.map((c: any) => c.name);
+        const columnsInfo = await db(collection).columnInfo() as Record<string, any>;
+        const colNames = Object.keys(columnsInfo);
         if (colNames.includes('date_updated')) body.date_updated = new Date().toISOString();
 
         await db(collection).where('id', id).update(body);

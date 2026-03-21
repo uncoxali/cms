@@ -68,15 +68,12 @@ async function ensureTables() {
     // Ensure neurofy_settings columns
     const hasSettingsTable = await db.schema.hasTable('neurofy_settings');
     if (hasSettingsTable) {
-        const columns = await db.raw("PRAGMA table_info('neurofy_settings')");
-        const colNames = columns.map((c: any) => c.name);
-        
-        if (!colNames.includes('token_expiration')) {
+        if (!(await db.schema.hasColumn('neurofy_settings', 'token_expiration'))) {
             await db.schema.alterTable('neurofy_settings', (table) => {
                 table.integer('token_expiration').defaultTo(168);
             });
         }
-        if (!colNames.includes('token_refresh_interval')) {
+        if (!(await db.schema.hasColumn('neurofy_settings', 'token_refresh_interval'))) {
             await db.schema.alterTable('neurofy_settings', (table) => {
                 table.integer('token_refresh_interval').defaultTo(12);
             });

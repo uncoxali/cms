@@ -18,14 +18,26 @@ const SYSTEM_TABLES = [
 
 export async function getCollections(req: AuthenticatedRequest, res: Response) {
     try {
-        const tables = await db.raw(
-            `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'knex_%' ORDER BY name`
-        );
+        const isMySQL = db.client.config.client === 'mysql2';
+        let tables;
+        
+        if (isMySQL) {
+            const [rows] = await db.raw(
+                "SELECT TABLE_NAME as name FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME NOT LIKE 'knex_%' ORDER BY TABLE_NAME",
+                [db.client.connectionSettings.database]
+            );
+            tables = rows;
+        } else {
+            tables = await db.raw(
+                `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'knex_%' ORDER BY name`
+            );
+        }
 
         const result: any[] = [];
         for (const t of tables) {
             const tableName = t.name;
-            const columns = await db.raw(`PRAGMA table_info('${tableName}')`);
+            const columnsInfo = await db(tableName).columnInfo() as Record<string, any>;
+            
             const meta = await db('neurofy_collections_meta')
                 .where('collection', tableName)
                 .first()
@@ -38,12 +50,12 @@ export async function getCollections(req: AuthenticatedRequest, res: Response) {
                 description: meta?.description || null,
                 is_system: SYSTEM_TABLES.includes(tableName),
                 hidden: meta?.hidden || false,
-                fields: columns.map((c: any) => ({
-                    name: c.name,
-                    type: c.type || 'TEXT',
-                    nullable: c.notnull === 0,
-                    default_value: c.dflt_value,
-                    is_primary_key: c.pk === 1,
+                fields: Object.entries(columnsInfo).map(([name, info]: [string, any]) => ({
+                    name,
+                    type: info.type || 'TEXT',
+                    nullable: info.nullable,
+                    default_value: info.defaultValue,
+                    is_primary_key: info.type === 'integer' && name === 'id' || info.type === 'int' && name === 'id', // Heuristic for PK if not explicitly provided
                 })),
             });
         }
@@ -60,7 +72,7 @@ export async function getCollection(req: AuthenticatedRequest, res: Response) {
         const exists = await db.schema.hasTable(name);
         if (!exists) return res.status(404).json({ error: 'Collection not found' });
 
-        const columns = await db.raw(`PRAGMA table_info('${name}')`);
+        const columnsInfo = await db(name).columnInfo() as Record<string, any>;
         const meta = await db('neurofy_collections_meta')
             .where('collection', name)
             .first()
@@ -74,12 +86,12 @@ export async function getCollection(req: AuthenticatedRequest, res: Response) {
                 description: meta?.description || null,
                 is_system: SYSTEM_TABLES.includes(name),
                 hidden: meta?.hidden || false,
-                fields: columns.map((c: any) => ({
-                    name: c.name,
-                    type: c.type || 'TEXT',
-                    nullable: c.notnull === 0,
-                    default_value: c.dflt_value,
-                    is_primary_key: c.pk === 1,
+                fields: Object.entries(columnsInfo).map(([colName, info]: [string, any]) => ({
+                    name: colName,
+                    type: info.type || 'TEXT',
+                    nullable: info.nullable,
+                    default_value: info.defaultValue,
+                    is_primary_key: info.type === 'integer' && colName === 'id' || info.type === 'int' && colName === 'id',
                 })),
             }
         });

@@ -11,9 +11,20 @@ const SYSTEM_TABLES = [
 // GET /api/schema — introspect all tables
 export async function getSchema(req: AuthenticatedRequest, res: Response) {
     try {
-        const tables = await db.raw(
-            `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'knex_%' ORDER BY name`
-        );
+        const isMySQL = db.client.config.client === 'mysql2';
+        let tables;
+        
+        if (isMySQL) {
+            const [rows] = await db.raw(
+                "SELECT TABLE_NAME as name FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME NOT LIKE 'knex_%' ORDER BY TABLE_NAME",
+                [db.client.connectionSettings.database]
+            );
+            tables = rows;
+        } else {
+            tables = await db.raw(
+                `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'knex_%' ORDER BY name`
+            );
+        }
 
         const collections: Record<string, any> = {};
         const allRelations = await db('neurofy_relations').select('*').catch(() => []);
@@ -22,23 +33,60 @@ export async function getSchema(req: AuthenticatedRequest, res: Response) {
             const tableName = t.name;
             const isSystem = SYSTEM_TABLES.includes(tableName);
 
-            const columns = await db.raw(`PRAGMA table_info('${tableName}')`);
-            const foreignKeys = await db.raw(`PRAGMA foreign_key_list('${tableName}')`);
-            const indexes = await db.raw(`PRAGMA index_list('${tableName}')`);
+            const columnsInfo = await db(tableName).columnInfo() as Record<string, any>;
+            
+            let foreignKeys: any[] = [];
+            let indexes: any[] = [];
+
+            if (isMySQL) {
+                const [fkRows] = await db.raw(`
+                    SELECT COLUMN_NAME as \`from\`, REFERENCED_TABLE_NAME as \`table\`, REFERENCED_COLUMN_NAME as \`to\`
+                    FROM information_schema.KEY_COLUMN_USAGE
+                    WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND REFERENCED_TABLE_NAME IS NOT NULL
+                `, [db.client.connectionSettings.database, tableName]);
+                foreignKeys = fkRows;
+
+                const [idxRows] = await db.raw(`SHOW INDEX FROM ${tableName}`);
+                indexes = idxRows.map((idx: any) => ({
+                    name: idx.Key_name,
+                    unique: idx.Non_unique === 0,
+                    column: idx.Column_name
+                }));
+            } else {
+                foreignKeys = await db.raw(`PRAGMA foreign_key_list('${tableName}')`);
+                const idxList = await db.raw(`PRAGMA index_list('${tableName}')`);
+                for (const idx of idxList) {
+                    const idxInfo = await db.raw(`PRAGMA index_info('${idx.name}')`);
+                    indexes.push({
+                        name: idx.name,
+                        unique: idx.unique === 1,
+                        columns: idxInfo.map((ii: any) => ii.name)
+                    });
+                }
+            }
+
             const meta = await db('neurofy_collections_meta')
                 .where('collection', tableName).first().catch(() => null);
             const tableRelations = allRelations.filter((r: any) => r.collection === tableName);
 
-            const fields = columns.map((col: any) => {
-                const fk = foreignKeys.find((fk: any) => fk.from === col.name);
-                const rel = tableRelations.find((r: any) => r.field === col.name);
+            const fields = Object.entries(columnsInfo).map(([colName, info]: [string, any]) => {
+                const fk = foreignKeys.find((fk: any) => fk.from === colName);
+                const rel = tableRelations.find((r: any) => r.field === colName);
+                
+                let isUnique = false;
+                if (isMySQL) {
+                    isUnique = indexes.some((idx: any) => idx.unique && idx.column === colName);
+                } else {
+                    isUnique = indexes.some((idx: any) => idx.unique && idx.columns.includes(colName));
+                }
+
                 return {
-                    name: col.name,
-                    type: col.type || 'TEXT',
-                    nullable: col.notnull === 0,
-                    default_value: col.dflt_value,
-                    is_primary_key: col.pk === 1,
-                    is_unique: indexes.some((idx: any) => idx.unique && idx.name?.includes(col.name)),
+                    name: colName,
+                    type: info.type || 'TEXT',
+                    nullable: info.nullable,
+                    default_value: info.defaultValue,
+                    is_primary_key: info.type === 'integer' && colName === 'id' || info.type === 'int' && colName === 'id',
+                    is_unique: isUnique,
                     foreign_key: fk ? { table: fk.table, column: fk.to } : null,
                     relation: rel ? {
                         related_collection: rel.related_collection,
@@ -76,20 +124,33 @@ export async function getCollectionSchema(req: AuthenticatedRequest, res: Respon
         const exists = await db.schema.hasTable(collection);
         if (!exists) return res.status(404).json({ error: 'Collection not found' });
 
-        const columns = await db.raw(`PRAGMA table_info('${collection}')`);
-        const foreignKeys = await db.raw(`PRAGMA foreign_key_list('${collection}')`);
+        const isMySQL = db.client.config.client === 'mysql2';
+        const columnsInfo = await db(collection).columnInfo() as Record<string, any>;
+        
+        let foreignKeys: any[] = [];
+        if (isMySQL) {
+            const [fkRows] = await db.raw(`
+                SELECT COLUMN_NAME as \`from\`, REFERENCED_TABLE_NAME as \`table\`, REFERENCED_COLUMN_NAME as \`to\`
+                FROM information_schema.KEY_COLUMN_USAGE
+                WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND REFERENCED_TABLE_NAME IS NOT NULL
+            `, [db.client.connectionSettings.database, collection]);
+            foreignKeys = fkRows;
+        } else {
+            foreignKeys = await db.raw(`PRAGMA foreign_key_list('${collection}')`);
+        }
+
         const meta = await db('neurofy_collections_meta').where('collection', collection).first().catch(() => null);
         const relations = await db('neurofy_relations').where('collection', collection).catch(() => []);
 
-        const fields = columns.map((col: any) => {
-            const fk = foreignKeys.find((fk: any) => fk.from === col.name);
-            const rel = relations.find((r: any) => r.field === col.name);
+        const fields = Object.entries(columnsInfo).map(([colName, info]: [string, any]) => {
+            const fk = foreignKeys.find((fk: any) => fk.from === colName);
+            const rel = relations.find((r: any) => r.field === colName);
             return {
-                name: col.name,
-                type: col.type || 'TEXT',
-                nullable: col.notnull === 0,
-                default_value: col.dflt_value,
-                is_primary_key: col.pk === 1,
+                name: colName,
+                type: info.type || 'TEXT',
+                nullable: info.nullable,
+                default_value: info.defaultValue,
+                is_primary_key: info.type === 'integer' && colName === 'id' || info.type === 'int' && colName === 'id',
                 foreign_key: fk ? { table: fk.table, column: fk.to } : null,
                 relation: rel ? {
                     related_collection: rel.related_collection,
@@ -218,8 +279,7 @@ export async function updateCollectionSchema(req: AuthenticatedRequest, res: Res
                 const relatedExists = await db.schema.hasTable(relation.related_collection);
                 if (!relatedExists) return res.status(400).json({ error: `Related collection "${relation.related_collection}" does not exist` });
 
-                const columns = await db.raw(`PRAGMA table_info('${collection}')`);
-                const columnExists = columns.some((c: any) => c.name === name);
+                const columnExists = await db.schema.hasColumn(collection, name);
 
                 if (!columnExists) {
                     await db.schema.alterTable(collection, (t) => {
@@ -259,8 +319,8 @@ export async function updateCollectionSchema(req: AuthenticatedRequest, res: Res
                 return res.json({ success: true, message: `Relation field "${name}" added` });
             }
 
-            const existingCols = await db.raw(`PRAGMA table_info('${collection}')`);
-            if (existingCols.some((c: any) => c.name === name)) {
+            const columnExists = await db.schema.hasColumn(collection, name);
+            if (columnExists) {
                 return res.status(409).json({ error: `Column "${name}" already exists` });
             }
 
