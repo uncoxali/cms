@@ -31,7 +31,7 @@ import { useRolesStore } from '@/store/roles';
 import { useActivityStore } from '@/store/activity';
 import { useNotificationsStore } from '@/store/notifications';
 import { useAuthStore } from '@/store/auth';
-import { api } from '@/lib/api';
+import { api, getUploadUrl } from '@/lib/api';
 import { useConfirm } from '@/components/admin/ConfirmDialog';
 import {
   Search, Plus, Mail, Edit2, Trash2, Users,
@@ -320,7 +320,7 @@ export default function UsersPage() {
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <Avatar src={user.avatar || undefined} sx={{
+                      <Avatar src={getUploadUrl(user.avatar)} sx={{
                         width: 36, height: 36, fontSize: 14, fontWeight: 700,
                         background: `linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)`, color: '#fff',
                       }}>

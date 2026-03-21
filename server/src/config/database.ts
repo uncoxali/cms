@@ -169,6 +169,11 @@ async function ensureTables() {
                 table.integer('token_refresh_interval').defaultTo(12);
             });
         }
+        if (!(await db.schema.hasColumn('neurofy_settings', 'logo_settings_json'))) {
+            await db.schema.alterTable('neurofy_settings', (table) => {
+                table.text('logo_settings_json');
+            });
+        }
     }
 
     // 4. neurofy_trash

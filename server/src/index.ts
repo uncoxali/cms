@@ -26,7 +26,7 @@ import webhooksRoutes from './routes/webhooks.routes';
 import trashRoutes from './routes/trash.routes';
 import revisionsRoutes from './routes/revisions.routes';
 import commentsRoutes from './routes/comments.routes';
-import pagesRoutes from './routes/pages.routes';
+// import pagesRoutes from './routes/pages.routes';
 import exportRoutes from './routes/export.routes';
 import importRoutes from './routes/import.routes';
 import templatesRoutes from './routes/templates.routes';
@@ -51,7 +51,14 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
 // ── Static files ──
-app.use('/uploads', express.static(config.uploadDir));
+app.use('/uploads', express.static(config.uploadDir), (req, res, next) => {
+    // Fallback to remote server in development if file not found locally
+    if (config.nodeEnv !== 'production' && config.dbHost !== 'localhost' && config.dbHost !== '127.0.0.1') {
+        const remoteUrl = `http://${config.dbHost}:${config.port}/uploads${req.url}`;
+        return res.redirect(remoteUrl);
+    }
+    next();
+});
 
 // ── API Routes ──
 app.use('/api/auth', authRoutes);
@@ -71,7 +78,7 @@ app.use('/api/webhooks', webhooksRoutes);
 app.use('/api/trash', trashRoutes);
 app.use('/api/revisions', revisionsRoutes);
 app.use('/api/comments', commentsRoutes);
-app.use('/api/pages', pagesRoutes);
+// app.use('/api/pages', pagesRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/templates', templatesRoutes);

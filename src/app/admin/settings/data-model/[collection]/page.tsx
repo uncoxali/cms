@@ -7,6 +7,7 @@ import Paper from '@mui/material/Paper';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Grid';
+import { alpha } from '@mui/material/styles';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Table from '@mui/material/Table';
@@ -53,6 +54,7 @@ import {
   GitBranch,
   Image as ImageIcon,
   Video,
+  Search,
 } from 'lucide-react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -482,6 +484,7 @@ export default function CollectionConfigPage({
   const [fieldDialogOpen, setFieldDialogOpen] = useState(false);
   const [fieldDialogStep, setFieldDialogStep] = useState<'picker' | 'form'>('picker');
   const [fieldFormTab, setFieldFormTab] = useState<'basics' | 'schema' | 'display' | 'validation'>('basics');
+  const [fieldSearch, setFieldSearch] = useState('');
   const [editingField, setEditingField] = useState<any>(null);
   const [fieldFormData, setFieldFormData] = useState({
     name: '',
@@ -1978,471 +1981,596 @@ export default function CollectionConfigPage({
             ? `New Field (${generalConfig.label})`
             : 'Configure Field'}
         </DialogTitle>
-        <DialogContent dividers>
+        <DialogContent dividers sx={{ p: 0, display: 'flex', flexDirection: 'column' }}>
           {fieldDialogStep === 'picker' && !editingField && (
-            <Box sx={{ pt: 1 }}>
-              {FIELD_TEMPLATE_GROUPS.map((group) => (
-                <Box key={group.id} sx={{ mb: 3 }}>
-                  <Typography
-                    variant='subtitle2'
-                    fontWeight={700}
-                    color='text.secondary'
-                    sx={{ mb: 1 }}
-                  >
-                    {group.label}
-                  </Typography>
-                  <Grid container spacing={2}>
-                    {group.templates.map((tpl: any) => (
-                      <Grid key={tpl.id} size={{ xs: 12, sm: 6, md: 3 }}>
-                        <Paper
-                          variant='outlined'
-                          onClick={() => {
-                            // Initialize form from template and go to form step
-                            setEditingField(null);
-                            setFieldFormData({
-                              name: '',
-                              label: tpl.label,
-                              type: tpl.type,
-                              interface: tpl.interface,
-                              display: 'formatted-value',
-                              required: false,
-                              group: tpl.group || 'General',
-                              length: 255,
-                              defaultValue: '',
-                              nullable: true,
-                              unique: false,
-                              indexed: false,
-                              searchable: false,
-                              validationMin: '',
-                              validationMax: '',
-                              validationRegex: '',
-                              readOnly: false,
-                              hidden: false,
-                              relatedCollection: '',
-                              relatedDisplayField: 'id',
-                            });
-                            setFieldDialogStep('form');
-                          }}
-                          sx={{
-                            p: 1.5,
-                            height: '100%',
-                            cursor: 'pointer',
-                            borderRadius: 2,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 1,
-                            borderStyle: 'solid',
-                            borderWidth: 1,
-                            '&:hover': {
-                              borderColor: 'primary.main',
-                              boxShadow: (theme) => theme.shadows[2],
-                            },
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: 2,
-                              bgcolor: 'action.hover',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              mb: 0.5,
-                            }}
-                          >
-                            <tpl.icon size={18} />
-                          </Box>
-                          <Typography variant='body2' fontWeight={600}>
-                            {tpl.label}
-                          </Typography>
-                          {tpl.description && (
-                            <Typography
-                              variant='caption'
-                              color='text.secondary'
-                              sx={{ display: 'block' }}
+            <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search field types (e.g. text, date, relation)..."
+                value={fieldSearch}
+                onChange={(e) => setFieldSearch(e.target.value)}
+                sx={{ 
+                  mb: 3,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 3,
+                    bgcolor: (theme) => alpha(theme.palette.text.primary, 0.02),
+                  }
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <Box sx={{ mr: 1.5, color: 'text.secondary', display: 'flex' }}>
+                       <Search size={18} />
+                    </Box>
+                  ),
+                }}
+              />
+              <Box sx={{ maxHeight: '60vh', overflowY: 'auto', pr: 1, mr: -1 }}>
+                {FIELD_TEMPLATE_GROUPS.map((group) => {
+                  const filteredTemplates = group.templates.filter(tpl => 
+                    tpl.label.toLowerCase().includes(fieldSearch.toLowerCase()) || 
+                    tpl.description?.toLowerCase().includes(fieldSearch.toLowerCase())
+                  );
+
+                  if (filteredTemplates.length === 0) return null;
+
+                  return (
+                    <Box key={group.id} sx={{ mb: 4 }}>
+                      <Typography 
+                        variant='subtitle2' 
+                        fontWeight={800} 
+                        color='text.secondary' 
+                        sx={{ 
+                          mb: 2, 
+                          textTransform: 'uppercase', 
+                          letterSpacing: '0.1em', 
+                          fontSize: '0.65rem',
+                          opacity: 0.8,
+                          px: 0.5
+                        }}
+                      >
+                        {group.label}
+                      </Typography>
+                      <Grid container spacing={2}>
+                        {filteredTemplates.map((tpl: any) => (
+                          <Grid key={tpl.id} size={{ xs: 12, sm: 6, md: 3 }}>
+                            <Paper
+                              variant='outlined'
+                              onClick={() => {
+                                setEditingField(null);
+                                setFieldFormData({
+                                  ...fieldFormData,
+                                  name: '',
+                                  label: tpl.label,
+                                  type: tpl.type,
+                                  interface: tpl.interface,
+                                  display: 'formatted-value',
+                                  required: false,
+                                  group: tpl.group || 'General',
+                                  length: 255,
+                                  defaultValue: '',
+                                  nullable: true,
+                                  unique: false,
+                                  indexed: false,
+                                  searchable: false,
+                                  validationMin: '',
+                                  validationMax: '',
+                                  validationRegex: '',
+                                  readOnly: false,
+                                  hidden: false,
+                                  relatedCollection: '',
+                                  relatedDisplayField: 'id',
+                                });
+                                setFieldDialogStep('form');
+                              }}
+                              sx={{
+                                p: 2,
+                                height: '100%',
+                                cursor: 'pointer',
+                                borderRadius: 3,
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                '&:hover': {
+                                  borderColor: 'primary.main',
+                                  bgcolor: (theme) => alpha(theme.palette.primary.main, 0.03),
+                                  transform: 'translateY(-3px)',
+                                  boxShadow: (theme) => `0 6px 16px ${alpha(theme.palette.primary.main, 0.12)}`,
+                                  '& .tpl-icon-box': {
+                                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.2),
+                                    transform: 'scale(1.1)',
+                                  }
+                                },
+                              }}
                             >
-                              {tpl.description}
-                            </Typography>
-                          )}
-                        </Paper>
+                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                <Box
+                                  className="tpl-icon-box"
+                                  sx={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 2,
+                                    bgcolor: (theme) => {
+                                      const colors: any = {
+                                        'text': theme.palette.primary.main,
+                                        'selection': theme.palette.secondary.main,
+                                        'relational': theme.palette.success.main,
+                                        'media': theme.palette.warning.main,
+                                        'system': theme.palette.info.main,
+                                      };
+                                      return alpha(colors[group.id] || theme.palette.primary.main, 0.1);
+                                    },
+                                    color: (theme) => {
+                                      const colors: any = {
+                                        'text': theme.palette.primary.main,
+                                        'selection': theme.palette.secondary.main,
+                                        'relational': theme.palette.success.main,
+                                        'media': theme.palette.warning.main,
+                                        'system': theme.palette.info.main,
+                                      };
+                                      return colors[group.id] || theme.palette.primary.main;
+                                    },
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.2s ease',
+                                  }}
+                                >
+                                  <tpl.icon size={20} />
+                                </Box>
+                                <Box>
+                                  <Typography variant='body2' fontWeight={700} sx={{ mb: 0.5 }}>
+                                    {tpl.label}
+                                  </Typography>
+                                  {tpl.description && (
+                                    <Typography
+                                      variant='caption'
+                                      color='text.secondary'
+                                      sx={{ 
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 2,
+                                        WebkitBoxOrient: 'vertical',
+                                        overflow: 'hidden',
+                                        lineHeight: 1.3,
+                                        fontSize: '0.7rem'
+                                      }}
+                                    >
+                                      {tpl.description}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              </Box>
+                            </Paper>
+                          </Grid>
+                        ))}
                       </Grid>
-                    ))}
-                  </Grid>
-                </Box>
-              ))}
+                    </Box>
+                  );
+                })}
+              </Box>
             </Box>
           )}
 
           {fieldDialogStep === 'form' && (
-          <Box
-            sx={{
-              pt: 1,
-              display: 'grid',
-              gridTemplateColumns: '1fr',
-              columnGap: 3,
-              rowGap: 2,
-            }}
-          >
-          <Grid container spacing={3}>
-            {/* Identity */}
-            <Grid size={{ xs: 12 }}>
-              <Typography variant='subtitle2' fontWeight={600} color='primary'>
-                Identity
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <TextField
-                fullWidth
-                label='Field Key'
-                value={fieldFormData.name}
-                onChange={(e) => setFieldFormData({ ...fieldFormData, name: e.target.value })}
-                disabled={!!editingField}
-                required
-                helperText="e.g. 'first_name'"
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <TextField
-                fullWidth
-                label='Label'
-                value={fieldFormData.label}
-                onChange={(e) => setFieldFormData({ ...fieldFormData, label: e.target.value })}
-                required
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <TextField
-                  fullWidth
-                  select
-                  label='Group (Tab/Panel)'
-                  value={fieldFormData.group}
-                  onChange={(e) => setFieldFormData({ ...fieldFormData, group: e.target.value })}
-                  helperText='e.g. Basic, SEO'
+            <Box sx={{ display: 'flex', minHeight: '520px' }}>
+              {/* Sidebar Tabs */}
+              <Box sx={{ 
+                width: 220, 
+                borderRight: '1px solid', 
+                borderColor: 'divider',
+                bgcolor: (theme) => alpha(theme.palette.text.primary, 0.02),
+                pt: 1
+              }}>
+                <Tabs
+                  orientation="vertical"
+                  value={fieldFormTab}
+                  onChange={(_, v) => setFieldFormTab(v)}
+                  sx={{
+                    '& .MuiTabs-indicator': { left: 0, right: 'auto', width: 3 },
+                    '& .MuiTab-root': { 
+                      alignItems: 'flex-start', 
+                      textAlign: 'left',
+                      minHeight: 48,
+                      px: 3,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      textTransform: 'none',
+                      color: 'text.secondary',
+                      '&.Mui-selected': { color: 'primary.main', bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08) }
+                    }
+                  }}
                 >
-                  {fieldGroups.map((group) => (
-                    <MenuItem key={group} value={group}>
-                      {group}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <IconButton 
-                  size='small' 
-                  onClick={() => setNewGroupDialogOpen(true)}
-                  sx={{ mt: 1 }}
-                  title="Add new group"
-                >
-                  <Plus size={16} />
-                </IconButton>
+                  <Tab value="basics" label="General" />
+                  <Tab value="schema" label="Schema" />
+                  <Tab value="display" label="Interface" />
+                  <Tab value="validation" label="Validation" />
+                </Tabs>
               </Box>
-            </Grid>
 
-            <Grid size={{ xs: 12 }}>
-              <Divider />
-            </Grid>
+              {/* Content Area */}
+              <Box sx={{ flex: 1, p: 4, overflowY: 'auto', maxHeight: '600px', bgcolor: 'background.paper' }}>
+                {fieldFormTab === 'basics' && (
+                  <Grid container spacing={3}>
+                    <Grid size={{ xs: 12 }}>
+                      <Typography variant='subtitle1' fontWeight={700} gutterBottom>General Settings</Typography>
+                      <Typography variant='caption' color='text.secondary'>Core identity and grouping for this field.</Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <TextField
+                        fullWidth
+                        label='Field Key'
+                        value={fieldFormData.name}
+                        onChange={(e) => setFieldFormData({ ...fieldFormData, name: e.target.value })}
+                        disabled={!!editingField}
+                        required
+                        helperText="System name, e.g. 'first_name'"
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <TextField
+                        fullWidth
+                        label='Field Label'
+                        value={fieldFormData.label}
+                        onChange={(e) => setFieldFormData({ ...fieldFormData, label: e.target.value })}
+                        required
+                        helperText="User-friendly name shown in UI"
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <TextField
+                          fullWidth
+                          select
+                          label='Group (Tab/Panel)'
+                          value={fieldFormData.group}
+                          onChange={(e) => setFieldFormData({ ...fieldFormData, group: e.target.value })}
+                        >
+                          {fieldGroups.map((group) => (
+                            <MenuItem key={group} value={group}>{group}</MenuItem>
+                          ))}
+                        </TextField>
+                        <IconButton size='small' onClick={() => setNewGroupDialogOpen(true)} title="Add new group">
+                          <Plus size={18} />
+                        </IconButton>
+                      </Box>
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <Divider sx={{ my: 1 }} />
+                      <Typography variant='subtitle2' fontWeight={600} sx={{ mb: 2, mt: 1 }}>Behavior & Visibility</Typography>
+                      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                        <Paper 
+                          variant="outlined" 
+                          sx={{ 
+                            p: 1.5, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            bgcolor: (theme) => alpha(theme.palette.primary.main, fieldFormData.required ? 0.04 : 0),
+                            borderColor: (theme) => fieldFormData.required ? theme.palette.primary.main : theme.palette.divider
+                          }}
+                        >
+                          <Box>
+                            <Typography variant="body2" fontWeight={600}>Required</Typography>
+                            <Typography variant="caption" color="text.secondary">Must have a value</Typography>
+                          </Box>
+                          <Switch 
+                            size='small' 
+                            checked={fieldFormData.required} 
+                            onChange={(e) => setFieldFormData({ ...fieldFormData, required: e.target.checked })} 
+                          />
+                        </Paper>
 
-            {/* Schema */}
-            <Grid size={{ xs: 12 }}>
-              <Typography variant='subtitle2' fontWeight={600} color='primary'>
-                Schema
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <TextField
-                fullWidth
-                select
-                label='Type'
-                value={fieldFormData.type}
-                onChange={(e) => setFieldFormData({ ...fieldFormData, type: e.target.value })}
-                disabled={!!editingField}
-              >
-                <MenuItem value='string'>String</MenuItem>
-                <MenuItem value='text'>Text (Long)</MenuItem>
-                <MenuItem value='integer'>Integer</MenuItem>
-                <MenuItem value='float'>Float</MenuItem>
-                <MenuItem value='boolean'>Boolean</MenuItem>
-                <MenuItem value='timestamp'>Timestamp</MenuItem>
-                <MenuItem value='uuid'>UUID</MenuItem>
-                <MenuItem value='json'>JSON</MenuItem>
-                <MenuItem value='relation'>Relation (Many-to-One)</MenuItem>
-              </TextField>
-            </Grid>
-            {fieldFormData.type === 'relation' ? (
-              <>
-                <Grid size={{ xs: 12, sm: 4 }}>
-                  <TextField
-                    fullWidth
-                    select
-                    label='Related Collection'
-                    value={fieldFormData.relatedCollection}
-                    onChange={(e) =>
-                      setFieldFormData({ ...fieldFormData, relatedCollection: e.target.value })
-                    }
-                    required
-                    disabled={!!editingField}
-                  >
-                    {otherCollections.map(([key, col]) => (
-                      <MenuItem key={key} value={key}>
-                        {col.label || key}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 4 }}>
-                  <TextField
-                    fullWidth
-                    select
-                    label='Display Field'
-                    value={fieldFormData.relatedDisplayField}
-                    onChange={(e) =>
-                      setFieldFormData({ ...fieldFormData, relatedDisplayField: e.target.value })
-                    }
-                    helperText='Field shown instead of ID'
-                  >
-                    <MenuItem value='id'>ID</MenuItem>
-                    {fieldFormData.relatedCollection &&
-                      collections[fieldFormData.relatedCollection]?.fields
-                        .filter((f) => !['id', 'date_created', 'date_updated'].includes(f.name))
-                        .map((f) => (
-                          <MenuItem key={f.name} value={f.name}>
-                            {f.label || f.name}
-                          </MenuItem>
-                        ))}
-                  </TextField>
-                </Grid>
-              </>
-            ) : (
-              <>
-                <Grid size={{ xs: 12, sm: 4 }}>
-                  <TextField
-                    type='number'
-                    fullWidth
-                    label='Length'
-                    value={fieldFormData.length}
-                    onChange={(e) =>
-                      setFieldFormData({ ...fieldFormData, length: Number(e.target.value) })
-                    }
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 4 }}>
-                  <TextField
-                    fullWidth
-                    label='Default Value'
-                    value={fieldFormData.defaultValue}
-                    onChange={(e) =>
-                      setFieldFormData({ ...fieldFormData, defaultValue: e.target.value })
-                    }
-                  />
-                </Grid>
-              </>
-            )}
-            <Grid size={{ xs: 12 }}>
-              <Box sx={{ display: 'flex', gap: 2.5, flexWrap: 'wrap' }}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      size='small'
-                      checked={fieldFormData.nullable}
-                      onChange={(e) =>
-                        setFieldFormData({ ...fieldFormData, nullable: e.target.checked })
-                      }
-                    />
-                  }
-                  label='Nullable'
-                  sx={{ '.MuiFormControlLabel-label': { ml: 0.5 } }}
-                />
-                <FormControlLabel
-                  control={
-                    <Switch
-                      size='small'
-                      checked={fieldFormData.unique}
-                      onChange={(e) =>
-                        setFieldFormData({ ...fieldFormData, unique: e.target.checked })
-                      }
-                    />
-                  }
-                  label='Unique'
-                  sx={{ '.MuiFormControlLabel-label': { ml: 0.5 } }}
-                />
-                <FormControlLabel
-                  control={
-                    <Switch
-                      size='small'
-                      checked={fieldFormData.indexed}
-                      onChange={(e) =>
-                        setFieldFormData({ ...fieldFormData, indexed: e.target.checked })
-                      }
-                    />
-                  }
-                  label='Indexed'
-                  sx={{ '.MuiFormControlLabel-label': { ml: 0.5 } }}
-                />
-                <FormControlLabel
-                  control={
-                    <Switch
-                      size='small'
-                      checked={fieldFormData.searchable}
-                      onChange={(e) =>
-                        setFieldFormData({ ...fieldFormData, searchable: e.target.checked })
-                      }
-                    />
-                  }
-                  label='Searchable'
-                  sx={{ '.MuiFormControlLabel-label': { ml: 0.5 } }}
-                />
+                        <Paper 
+                          variant="outlined" 
+                          sx={{ 
+                            p: 1.5, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            bgcolor: (theme) => alpha(theme.palette.warning.main, fieldFormData.hidden ? 0.04 : 0),
+                            borderColor: (theme) => fieldFormData.hidden ? theme.palette.warning.main : theme.palette.divider
+                          }}
+                        >
+                          <Box>
+                            <Typography variant="body2" fontWeight={600}>Hidden</Typography>
+                            <Typography variant="caption" color="text.secondary">Hide from all forms</Typography>
+                          </Box>
+                          <Switch 
+                            size='small' 
+                            checked={fieldFormData.hidden} 
+                            onChange={(e) => setFieldFormData({ ...fieldFormData, hidden: e.target.checked })} 
+                          />
+                        </Paper>
+
+                        <Paper 
+                          variant="outlined" 
+                          sx={{ 
+                            p: 1.5, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            bgcolor: (theme) => alpha(theme.palette.info.main, fieldFormData.readOnly ? 0.04 : 0),
+                            borderColor: (theme) => fieldFormData.readOnly ? theme.palette.info.main : theme.palette.divider
+                          }}
+                        >
+                          <Box>
+                            <Typography variant="body2" fontWeight={600}>Read-Only</Typography>
+                            <Typography variant="caption" color="text.secondary">Cannot be edited</Typography>
+                          </Box>
+                          <Switch 
+                            size='small' 
+                            checked={fieldFormData.readOnly} 
+                            onChange={(e) => setFieldFormData({ ...fieldFormData, readOnly: e.target.checked })} 
+                          />
+                        </Paper>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                )}
+
+                {fieldFormTab === 'schema' && (
+                  <Grid container spacing={3}>
+                    <Grid size={{ xs: 12 }}>
+                      <Typography variant='subtitle1' fontWeight={700} gutterBottom>Database Schema</Typography>
+                      <Typography variant='caption' color='text.secondary'>How data is stored and indexed in the database.</Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <TextField
+                        fullWidth
+                        select
+                        label='Database Type'
+                        value={fieldFormData.type}
+                        onChange={(e) => setFieldFormData({ ...fieldFormData, type: e.target.value })}
+                        disabled={!!editingField}
+                      >
+                        <MenuItem value='string'>String</MenuItem>
+                        <MenuItem value='text'>Text (Long)</MenuItem>
+                        <MenuItem value='integer'>Integer</MenuItem>
+                        <MenuItem value='float'>Float</MenuItem>
+                        <MenuItem value='boolean'>Boolean</MenuItem>
+                        <MenuItem value='timestamp'>Timestamp</MenuItem>
+                        <MenuItem value='uuid'>UUID</MenuItem>
+                        <MenuItem value='json'>JSON</MenuItem>
+                        <MenuItem value='relation'>Relation (Many-to-One)</MenuItem>
+                      </TextField>
+                    </Grid>
+                    {fieldFormData.type === 'relation' ? (
+                      <>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <TextField
+                            fullWidth
+                            select
+                            label='Related Collection'
+                            value={fieldFormData.relatedCollection}
+                            onChange={(e) => setFieldFormData({ ...fieldFormData, relatedCollection: e.target.value })}
+                            required
+                            disabled={!!editingField}
+                          >
+                            {otherCollections.map(([key, col]) => (
+                              <MenuItem key={key} value={key}>{col.label || key}</MenuItem>
+                            ))}
+                          </TextField>
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                          <TextField
+                            fullWidth
+                            select
+                            label='Display Field'
+                            value={fieldFormData.relatedDisplayField}
+                            onChange={(e) => setFieldFormData({ ...fieldFormData, relatedDisplayField: e.target.value })}
+                            helperText='Field shown in selection UI'
+                          >
+                            <MenuItem value='id'>ID (Primary Key)</MenuItem>
+                            {fieldFormData.relatedCollection && collections[fieldFormData.relatedCollection]?.fields
+                              .filter((f) => !['id', 'date_created', 'date_updated'].includes(f.name))
+                              .map((f) => (
+                                <MenuItem key={f.name} value={f.name}>{f.label || f.name}</MenuItem>
+                              ))}
+                          </TextField>
+                        </Grid>
+                      </>
+                    ) : (
+                      <>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <TextField
+                            type='number'
+                            fullWidth
+                            label='Length'
+                            value={fieldFormData.length}
+                            onChange={(e) => setFieldFormData({ ...fieldFormData, length: Number(e.target.value) })}
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                          <TextField
+                            fullWidth
+                            label='Default Value'
+                            value={fieldFormData.defaultValue}
+                            onChange={(e) => setFieldFormData({ ...fieldFormData, defaultValue: e.target.value })}
+                          />
+                        </Grid>
+                      </>
+                    )}
+                    <Grid size={{ xs: 12 }}>
+                      <Divider sx={{ my: 1 }} />
+                      <Typography variant='subtitle2' fontWeight={600} sx={{ mb: 2, mt: 1 }}>Database Constraints</Typography>
+                      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                        <Paper 
+                          variant="outlined" 
+                          sx={{ 
+                            p: 1.5, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            bgcolor: (theme) => alpha(theme.palette.primary.main, fieldFormData.nullable ? 0.04 : 0),
+                            borderColor: (theme) => fieldFormData.nullable ? theme.palette.primary.main : theme.palette.divider
+                          }}
+                        >
+                          <Box>
+                            <Typography variant="body2" fontWeight={600}>Nullable</Typography>
+                            <Typography variant="caption" color="text.secondary">Allow empty values</Typography>
+                          </Box>
+                          <Switch 
+                            size='small' 
+                            checked={fieldFormData.nullable} 
+                            onChange={(e) => setFieldFormData({ ...fieldFormData, nullable: e.target.checked })} 
+                          />
+                        </Paper>
+
+                        <Paper 
+                          variant="outlined" 
+                          sx={{ 
+                            p: 1.5, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            bgcolor: (theme) => alpha(theme.palette.secondary.main, fieldFormData.unique ? 0.04 : 0),
+                            borderColor: (theme) => fieldFormData.unique ? theme.palette.secondary.main : theme.palette.divider
+                          }}
+                        >
+                          <Box>
+                            <Typography variant="body2" fontWeight={600}>Unique</Typography>
+                            <Typography variant="caption" color="text.secondary">Prevent duplicates</Typography>
+                          </Box>
+                          <Switch 
+                            size='small' 
+                            checked={fieldFormData.unique} 
+                            onChange={(e) => setFieldFormData({ ...fieldFormData, unique: e.target.checked })} 
+                          />
+                        </Paper>
+
+                        <Paper 
+                          variant="outlined" 
+                          sx={{ 
+                            p: 1.5, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            bgcolor: (theme) => alpha(theme.palette.success.main, fieldFormData.indexed ? 0.04 : 0),
+                            borderColor: (theme) => fieldFormData.indexed ? theme.palette.success.main : theme.palette.divider
+                          }}
+                        >
+                          <Box>
+                            <Typography variant="body2" fontWeight={600}>Indexed</Typography>
+                            <Typography variant="caption" color="text.secondary">Speed up queries</Typography>
+                          </Box>
+                          <Switch 
+                            size='small' 
+                            checked={fieldFormData.indexed} 
+                            onChange={(e) => setFieldFormData({ ...fieldFormData, indexed: e.target.checked })} 
+                          />
+                        </Paper>
+
+                        <Paper 
+                          variant="outlined" 
+                          sx={{ 
+                            p: 1.5, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            bgcolor: (theme) => alpha(theme.palette.info.main, fieldFormData.searchable ? 0.04 : 0),
+                            borderColor: (theme) => fieldFormData.searchable ? theme.palette.info.main : theme.palette.divider
+                          }}
+                        >
+                          <Box>
+                            <Typography variant="body2" fontWeight={600}>Searchable</Typography>
+                            <Typography variant="caption" color="text.secondary">Included in search</Typography>
+                          </Box>
+                          <Switch 
+                            size='small' 
+                            checked={fieldFormData.searchable} 
+                            onChange={(e) => setFieldFormData({ ...fieldFormData, searchable: e.target.checked })} 
+                          />
+                        </Paper>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                )}
+
+                {fieldFormTab === 'display' && (
+                  <Grid container spacing={3}>
+                    <Grid size={{ xs: 12 }}>
+                      <Typography variant='subtitle1' fontWeight={700} gutterBottom>Interface & Presentation</Typography>
+                      <Typography variant='caption' color='text.secondary'>Choose how users interact with and see this data.</Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <TextField
+                        fullWidth
+                        select
+                        label='Interface'
+                        value={fieldFormData.interface}
+                        onChange={(e) => setFieldFormData({ ...fieldFormData, interface: e.target.value })}
+                        helperText="The input component used in forms"
+                      >
+                        <MenuItem value='input'>Text Input</MenuItem>
+                        <MenuItem value='textarea'>Textarea</MenuItem>
+                        <MenuItem value='wysiwyg'>WYSIWYG Editor</MenuItem>
+                        <MenuItem value='boolean'>Toggle / Switch</MenuItem>
+                        <MenuItem value='datetime'>Datetime Picker</MenuItem>
+                        <MenuItem value='select-dropdown'>Dropdown</MenuItem>
+                        <MenuItem value='file'>File Picker</MenuItem>
+                        <MenuItem value='chart'>Chart Builder</MenuItem>
+                        <MenuItem value='relation'>Relation Picker</MenuItem>
+                        <MenuItem value='slug'>Auto-Slug</MenuItem>
+                        <MenuItem value='color'>Color Picker</MenuItem>
+                        <MenuItem value='icon'>Icon Selector</MenuItem>
+                        <MenuItem value='user'>User Selector</MenuItem>
+                      </TextField>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <TextField
+                        fullWidth
+                        select
+                        label='Display Type'
+                        value={fieldFormData.display}
+                        onChange={(e) => setFieldFormData({ ...fieldFormData, display: e.target.value })}
+                        helperText="How the value appears in tables"
+                      >
+                        <MenuItem value='formatted-value'>Formatted Value</MenuItem>
+                        <MenuItem value='raw'>Raw String</MenuItem>
+                        <MenuItem value='color'>Color Swatch</MenuItem>
+                        <MenuItem value='datetime'>Relative Datetime</MenuItem>
+                        <MenuItem value='boolean'>Boolean Indicator (Dot)</MenuItem>
+                        <MenuItem value='image'>Image Thumbnail</MenuItem>
+                      </TextField>
+                    </Grid>
+                  </Grid>
+                )}
+
+                {fieldFormTab === 'validation' && (
+                  <Grid container spacing={3}>
+                    <Grid size={{ xs: 12 }}>
+                      <Typography variant='subtitle1' fontWeight={700} gutterBottom>Validation Rules</Typography>
+                      <Typography variant='caption' color='text.secondary'>Define constraints for valid data entry.</Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <TextField
+                        fullWidth
+                        label='Min Value / Length'
+                        value={fieldFormData.validationMin}
+                        onChange={(e) => setFieldFormData({ ...fieldFormData, validationMin: e.target.value })}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <TextField
+                        fullWidth
+                        label='Max Value / Length'
+                        value={fieldFormData.validationMax}
+                        onChange={(e) => setFieldFormData({ ...fieldFormData, validationMax: e.target.value })}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <TextField
+                        fullWidth
+                        label='Regex Pattern'
+                        value={fieldFormData.validationRegex}
+                        onChange={(e) => setFieldFormData({ ...fieldFormData, validationRegex: e.target.value })}
+                        helperText='e.g. ^[a-z0-9]+$'
+                      />
+                    </Grid>
+                  </Grid>
+                )}
               </Box>
-            </Grid>
-
-            <Grid size={{ xs: 12 }}>
-              <Divider />
-            </Grid>
-
-            {/* Interface & Display */}
-            <Grid size={{ xs: 12 }}>
-              <Typography variant='subtitle2' fontWeight={600} color='primary'>
-                Interface & Display
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                fullWidth
-                select
-                label='Interface'
-                value={fieldFormData.interface}
-                onChange={(e) => setFieldFormData({ ...fieldFormData, interface: e.target.value })}
-              >
-                <MenuItem value='input'>Text Input</MenuItem>
-                <MenuItem value='textarea'>Textarea</MenuItem>
-                <MenuItem value='wysiwyg'>WYSIWYG Editor</MenuItem>
-                <MenuItem value='boolean'>Toggle / Switch</MenuItem>
-                <MenuItem value='datetime'>Datetime Picker</MenuItem>
-                <MenuItem value='select-dropdown'>Dropdown</MenuItem>
-                <MenuItem value='file'>File Picker</MenuItem>
-                <MenuItem value='chart'>Chart Builder</MenuItem>
-                <MenuItem value='relation'>Relation Picker</MenuItem>
-                <MenuItem value='slug'>Auto-Slug</MenuItem>
-                <MenuItem value='color'>Color Picker</MenuItem>
-                <MenuItem value='icon'>Icon Selector</MenuItem>
-                <MenuItem value='user'>User Selector</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                fullWidth
-                select
-                label='Display'
-                value={fieldFormData.display}
-                onChange={(e) => setFieldFormData({ ...fieldFormData, display: e.target.value })}
-              >
-                <MenuItem value='formatted-value'>Formatted Value</MenuItem>
-                <MenuItem value='raw'>Raw</MenuItem>
-                <MenuItem value='color'>Color</MenuItem>
-                <MenuItem value='datetime'>Datetime</MenuItem>
-                <MenuItem value='boolean'>Boolean (Dot)</MenuItem>
-                <MenuItem value='image'>Image Thumbnail</MenuItem>
-              </TextField>
-            </Grid>
-
-            <Grid size={{ xs: 12 }}>
-              <Divider />
-            </Grid>
-
-            {/* Validation */}
-            <Grid size={{ xs: 12 }}>
-              <Typography variant='subtitle2' fontWeight={600} color='primary'>
-                Validation
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <TextField
-                fullWidth
-                label='Min Value / Length'
-                value={fieldFormData.validationMin}
-                onChange={(e) =>
-                  setFieldFormData({ ...fieldFormData, validationMin: e.target.value })
-                }
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <TextField
-                fullWidth
-                label='Max Value / Length'
-                value={fieldFormData.validationMax}
-                onChange={(e) =>
-                  setFieldFormData({ ...fieldFormData, validationMax: e.target.value })
-                }
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <TextField
-                fullWidth
-                label='Regex Pattern'
-                value={fieldFormData.validationRegex}
-                onChange={(e) =>
-                  setFieldFormData({ ...fieldFormData, validationRegex: e.target.value })
-                }
-                helperText='e.g. ^[a-z]+$'
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12 }}>
-              <Divider />
-            </Grid>
-
-            {/* Conditions */}
-            <Grid size={{ xs: 12 }}>
-              <Typography variant='subtitle2' fontWeight={600} color='primary'>
-                Conditions
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 12 }}>
-              <Box sx={{ display: 'flex', gap: 2.5, flexWrap: 'wrap' }}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      size='small'
-                      checked={fieldFormData.required}
-                      onChange={(e) =>
-                        setFieldFormData({ ...fieldFormData, required: e.target.checked })
-                      }
-                    />
-                  }
-                  label='Required'
-                  sx={{ '.MuiFormControlLabel-label': { ml: 0.5 } }}
-                />
-                <FormControlLabel
-                  control={
-                    <Switch
-                      size='small'
-                      checked={fieldFormData.readOnly}
-                      onChange={(e) =>
-                        setFieldFormData({ ...fieldFormData, readOnly: e.target.checked })
-                      }
-                    />
-                  }
-                  label='Read-Only'
-                  sx={{ '.MuiFormControlLabel-label': { ml: 0.5 } }}
-                />
-                <FormControlLabel
-                  control={
-                    <Switch
-                      size='small'
-                      checked={fieldFormData.hidden}
-                      onChange={(e) =>
-                        setFieldFormData({ ...fieldFormData, hidden: e.target.checked })
-                      }
-                    />
-                  }
-                  label='Hidden'
-                  sx={{ '.MuiFormControlLabel-label': { ml: 0.5 } }}
-                />
-              </Box>
-            </Grid>
-          </Grid>
-
-          {/* (Field summary sidebar removed as requested) */}
-          </Box>
+            </Box>
           )}
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>

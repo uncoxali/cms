@@ -18,6 +18,7 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import { alpha } from '@mui/material/styles';
 import { useAuthStore } from '@/store/auth';
+import { getUploadUrl } from '@/lib/api';
 import { useNotificationsStore } from '@/store/notifications';
 import {
   MessageSquare, Send, Trash2, MoreVertical, User, Clock, AlertCircle
@@ -149,7 +150,7 @@ export function ItemComments({ comments, onAdd, onDelete, loading = false }: Ite
                 >
                   <ListItemAvatar sx={{ minWidth: 40 }}>
                     {comment.userAvatar ? (
-                      <Avatar src={comment.userAvatar} sx={{ width: 28, height: 28 }} />
+                      <Avatar src={getUploadUrl(comment.userAvatar)} sx={{ width: 28, height: 28 }} />
                     ) : (
                       <Avatar sx={{ width: 28, height: 28, bgcolor: alpha('#8B5CF6', 0.2), fontSize: 12 }}>
                         {comment.userName.charAt(0).toUpperCase()}

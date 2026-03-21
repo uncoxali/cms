@@ -15,6 +15,8 @@ export async function getSettings(req: AuthenticatedRequest, res: Response) {
                 feature_flags_json: undefined,
                 custom_themes: settings.custom_themes_json ? JSON.parse(settings.custom_themes_json) : [],
                 custom_themes_json: undefined,
+                logo_settings: settings.logo_settings_json ? JSON.parse(settings.logo_settings_json) : null,
+                logo_settings_json: undefined,
             },
         });
     } catch (error: any) {
@@ -34,6 +36,10 @@ export async function updateSettings(req: AuthenticatedRequest, res: Response) {
         if (body.custom_themes !== undefined) {
             updateData.custom_themes_json = JSON.stringify(body.custom_themes);
             delete updateData.custom_themes;
+        }
+        if (body.logo_settings !== undefined) {
+            updateData.logo_settings_json = JSON.stringify(body.logo_settings);
+            delete updateData.logo_settings;
         }
 
         await db('neurofy_settings').where('id', 1).update(updateData);
@@ -55,6 +61,8 @@ export async function updateSettings(req: AuthenticatedRequest, res: Response) {
                 feature_flags_json: undefined,
                 custom_themes: settings.custom_themes_json ? JSON.parse(settings.custom_themes_json) : [],
                 custom_themes_json: undefined,
+                logo_settings: settings.logo_settings_json ? JSON.parse(settings.logo_settings_json) : null,
+                logo_settings_json: undefined,
             },
         });
     } catch (error: any) {

@@ -628,7 +628,7 @@ export default function UserEditorPage({ params }: { params: Promise<{ id: strin
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4 }}>
                   <Box sx={{ position: 'relative' }}>
                     <Avatar
-                      src={form.avatar || undefined}
+                      src={getUploadUrl(form.avatar)}
                       sx={{
                         width: 80,
                         height: 80,

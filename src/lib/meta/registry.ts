@@ -77,6 +77,7 @@ export const ExtensionRegistry = {
             version: '1.0.0',
             author: 'Core'
         },
+/*
         {
             id: 'pages',
             name: 'Pages & Routes',
@@ -86,6 +87,7 @@ export const ExtensionRegistry = {
             version: '1.0.0',
             author: 'Core'
         },
+*/
         {
             id: 'files',
             name: 'File Library',

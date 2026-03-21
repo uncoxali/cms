@@ -30,6 +30,7 @@ import { useActivityStore } from '@/store/activity';
 import { useNotificationsStore } from '@/store/notifications';
 import { THEME_LIST, DARK_THEMES, LIGHT_THEMES, ThemePreset, THEME_PRESETS } from '@/lib/themes';
 import CustomThemeCreator from '@/components/admin/CustomThemeCreator';
+import LogoDesigner from '@/components/admin/LogoDesigner';
 
 const TIMEZONE_OPTIONS = [
   'UTC', 'Asia/Tehran', 'Asia/Dubai', 'Asia/Tokyo', 'Asia/Shanghai',
@@ -228,9 +229,13 @@ export default function ProjectSettingsPage() {
                     <TextField fullWidth multiline rows={2} label="Project Description" value={form.projectDescription}
                       onChange={(e) => updateForm({ projectDescription: e.target.value })} />
                   </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField fullWidth label="Logo URL" value={form.logoUrl}
-                      onChange={(e) => updateForm({ logoUrl: e.target.value })} />
+                  <Grid size={{ xs: 12 }}>
+                    <LogoDesigner
+                      settings={form.logoSettings || { type: 'image', text: form.projectName, icon: 'Sparkles', color: form.primaryColor, font: 'Inter' }}
+                      logoUrl={form.logoUrl}
+                      onChange={(logoSettings) => updateForm({ logoSettings })}
+                      onLogoUrlChange={(logoUrl) => updateForm({ logoUrl })}
+                    />
                   </Grid>
                 </Grid>
               </Paper>

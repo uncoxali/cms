@@ -15,7 +15,8 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
 import { alpha, useTheme } from '@mui/material/styles';
-import { FileText, LayoutGrid, FileEdit, FolderOpen, Users, Zap, Activity, Settings } from 'lucide-react';
+import { FileText, LayoutGrid, FileEdit, FolderOpen, Users, Zap, Activity, Settings, Sparkles } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 
 const DRAWER_WIDTH = 240;
@@ -40,7 +41,7 @@ interface NavPage {
 const SIDEBAR_KEYS: Record<string, string> = {
   dashboard: 'sidebar.insights',
   content: 'sidebar.content',
-  pages: 'sidebar.pages',
+  // pages: 'sidebar.pages',
   files: 'sidebar.files',
   users: 'sidebar.users',
   flows: 'sidebar.automations',
@@ -53,18 +54,21 @@ export default function Sidebar() {
   const role = useAuthStore((state) => state.role);
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
-  const featureFlags = useProjectStore((state) => state.settings.featureFlags);
+  const { settings } = useProjectStore();
+  const { featureFlags, logoSettings, logoUrl, projectName } = settings;
   const [navPages, setNavPages] = useState<NavPage[]>([]);
   const { t } = useTranslation();
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
 
+/*
   useEffect(() => {
     if (!token) return;
     api.get<{ data: NavPage[] }>('/pages', { nav: '1' })
       .then(res => setNavPages(res.data || []))
       .catch(() => {});
   }, [token]);
+*/
 
   const userPerms = user?.permissions as any;
   const modulePerms = userPerms?._modules || {};
@@ -105,31 +109,75 @@ export default function Sidebar() {
     >
       {/* Logo */}
       <Box sx={{ p: 2.5, pb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Box
-            sx={{
-              width: 36,
-              height: 36,
-              borderRadius: '10px',
-              background: `linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Typography sx={{ color: '#fff', fontWeight: 800, fontSize: 16 }}>
-              N
-            </Typography>
+        <Link href="/admin/dashboard" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            {logoSettings?.type === 'custom' ? (
+              <>
+                <Box
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '10px',
+                    background: logoSettings.color 
+                      ? alpha(logoSettings.color, 0.15)
+                      : `linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)`,
+                    color: logoSettings.color || '#8B5CF6',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {(() => {
+                    const Icon = logoSettings.icon ? (LucideIcons as any)[logoSettings.icon] : Sparkles;
+                    return Icon ? <Icon size={20} /> : <Sparkles size={20} />;
+                  })()}
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={800} fontSize={15} sx={{ 
+                    fontFamily: logoSettings.font || 'inherit',
+                    lineHeight: 1.2,
+                    letterSpacing: '-0.01em'
+                  }}>
+                    {logoSettings.text || projectName}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" fontSize={10} fontWeight={500} sx={{ mt: -0.5, display: 'block' }}>
+                    Admin Panel
+                  </Typography>
+                </Box>
+              </>
+            ) : (
+              <>
+                {logoUrl ? (
+                  <Box component="img" src={logoUrl} sx={{ width: 32, height: 32, objectFit: 'contain' }} />
+                ) : (
+                  <Box
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '10px',
+                      background: `linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Typography sx={{ color: '#fff', fontWeight: 800, fontSize: 16 }}>
+                      {projectName.charAt(0)}
+                    </Typography>
+                  </Box>
+                )}
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700} fontSize={14}>
+                    {projectName}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" fontSize={11}>
+                    Content Platform
+                  </Typography>
+                </Box>
+              </>
+            )}
           </Box>
-          <Box>
-            <Typography variant="subtitle2" fontWeight={700} fontSize={14}>
-              Neurofy CMS
-            </Typography>
-            <Typography variant="caption" color="text.secondary" fontSize={11}>
-              Content Platform
-            </Typography>
-          </Box>
-        </Box>
+        </Link>
       </Box>
 
       {/* Navigation */}
@@ -202,7 +250,8 @@ export default function Sidebar() {
           );
         })}
 
-        {/* Custom Pages */}
+{/* Custom Pages (Disabled for now) */}
+{/*
         {visiblePages.length > 0 && (
           <>
             <Box sx={{ my: 0.5, mx: 1, height: 1, bgcolor: 'divider' }} />
@@ -248,6 +297,7 @@ export default function Sidebar() {
             })}
           </>
         )}
+*/}
       </List>
 
       {/* Settings */}

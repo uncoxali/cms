@@ -262,6 +262,13 @@ export async function viewFile(req: any, res: Response) {
             return res.sendFile(publicPath);
         }
 
+        // 4. Try remote server fallback (for local development)
+        // If we are in development and the database is remote, redirect to the remote server's uploads folder
+        if (config.nodeEnv !== 'production' && config.dbHost !== 'localhost' && config.dbHost !== '127.0.0.1') {
+            const remoteUrl = `http://${config.dbHost}:${config.port}/uploads/${file.filename_disk}`;
+            return res.redirect(remoteUrl);
+        }
+
         res.status(404).json({ error: 'File content not found (DB or Disk)' });
     } catch (error: any) {
         res.status(500).json({ error: error.message });

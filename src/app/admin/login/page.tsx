@@ -21,8 +21,11 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme, alpha } from '@mui/material/styles';
-import { Eye, EyeOff, LogIn, Shield, Zap, Database, BarChart3, Lock, KeyRound } from 'lucide-react';
+import { Eye, EyeOff, LogIn, Shield, Zap, Database, BarChart3, Lock, KeyRound, Sparkles } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { api } from '@/lib/api';
+import { useProjectStore } from '@/store/project';
+import { useEffect } from 'react';
 
 const ROLES = [
   { value: 'admin', label: 'Administrator', desc: 'Full system access', color: '#EF4444' },
@@ -52,6 +55,15 @@ export default function LoginPage() {
   const [role, setRole] = useState<Role>('admin');
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
+  
+  const { settings, fetched, fetchSettings } = useProjectStore();
+  const { logoSettings, logoUrl, projectName } = settings;
+
+  useEffect(() => {
+    if (!fetched) {
+      fetchSettings();
+    }
+  }, [fetched, fetchSettings]);
 
   // Forgot Password state
   const [forgotOpen, setForgotOpen] = useState(false);
@@ -152,22 +164,55 @@ export default function LoginPage() {
 
         <Box sx={{ position: 'relative', zIndex: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 6 }}>
-            <Box sx={{
-              width: 48, height: 48, borderRadius: '14px',
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.35)}`,
-            }}>
-              <Typography sx={{ color: 'white', fontWeight: 800, fontSize: 20 }}>N</Typography>
-            </Box>
-            <Box>
-              <Typography variant="h5" fontWeight={800} color="text.primary" letterSpacing="-0.03em">
-                NexDirect
-              </Typography>
-              <Typography variant="caption" color="text.secondary" fontSize={12}>
-                Data Studio
-              </Typography>
-            </Box>
+            {logoSettings?.type === 'custom' ? (
+              <>
+                <Box sx={{
+                  width: 48, height: 48, borderRadius: '14px',
+                  background: logoSettings.color 
+                    ? alpha(logoSettings.color, 0.15)
+                    : `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  color: logoSettings.color || theme.palette.primary.main,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: logoSettings.color ? `0 8px 32px ${alpha(logoSettings.color, 0.25)}` : `0 8px 32px ${alpha(theme.palette.primary.main, 0.35)}`,
+                }}>
+                  {(() => {
+                    const Icon = logoSettings.icon ? (LucideIcons as any)[logoSettings.icon] : Sparkles;
+                    return Icon ? <Icon size={24} /> : <Sparkles size={24} />;
+                  })()}
+                </Box>
+                <Box>
+                  <Typography variant="h5" fontWeight={800} color="text.primary" letterSpacing="-0.03em" sx={{ fontFamily: logoSettings.font || 'inherit' }}>
+                    {logoSettings.text || projectName}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" fontSize={12}>
+                    Project Management
+                  </Typography>
+                </Box>
+              </>
+            ) : (
+              <>
+                {logoUrl ? (
+                  <Box component="img" src={logoUrl} sx={{ width: 48, height: 48, objectFit: 'contain' }} />
+                ) : (
+                  <Box sx={{
+                    width: 48, height: 48, borderRadius: '14px',
+                    background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.35)}`,
+                  }}>
+                    <Typography sx={{ color: 'white', fontWeight: 800, fontSize: 20 }}>{projectName.charAt(0)}</Typography>
+                  </Box>
+                )}
+                <Box>
+                  <Typography variant="h5" fontWeight={800} color="text.primary" letterSpacing="-0.03em">
+                    {projectName}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" fontSize={12}>
+                    Data Studio
+                  </Typography>
+                </Box>
+              </>
+            )}
           </Box>
 
           <Typography variant="h3" fontWeight={800} color="text.primary" letterSpacing="-0.03em" lineHeight={1.2} mb={2}>
@@ -223,15 +268,47 @@ export default function LoginPage() {
         <Box sx={{ width: '100%', maxWidth: 420 }}>
           {/* Mobile logo */}
           <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 2, mb: 5, justifyContent: 'center' }}>
-            <Box sx={{
-              width: 40, height: 40, borderRadius: '12px',
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.35)}`,
-            }}>
-              <Typography sx={{ color: 'white', fontWeight: 800, fontSize: 16 }}>N</Typography>
-            </Box>
-            <Typography variant="h6" fontWeight={800} color="text.primary">NexDirect</Typography>
+            {logoSettings?.type === 'custom' ? (
+              <>
+                <Box sx={{
+                  width: 40, height: 40, borderRadius: '12px',
+                  background: logoSettings.color 
+                    ? alpha(logoSettings.color, 0.15)
+                    : `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  color: logoSettings.color || theme.palette.primary.main,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {(() => {
+                    const Icon = logoSettings.icon ? (LucideIcons as any)[logoSettings.icon] : Sparkles;
+                    return Icon ? <Icon size={20} /> : <Sparkles size={20} />;
+                  })()}
+                </Box>
+                <Typography variant="h6" fontWeight={800} color="text.primary" sx={{ fontFamily: logoSettings.font || 'inherit' }}>
+                  {logoSettings.text || projectName}
+                </Typography>
+              </>
+            ) : (
+              <>
+                {logoUrl ? (
+                  <Box component="img" src={logoUrl} sx={{ width: 40, height: 40, objectFit: 'contain' }} />
+                ) : (
+                  <Box
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: '12px',
+                      background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Typography sx={{ color: 'white', fontWeight: 800, fontSize: 16 }}>{projectName.charAt(0)}</Typography>
+                  </Box>
+                )}
+                <Typography variant="h6" fontWeight={800} color="text.primary">{projectName}</Typography>
+              </>
+            )}
           </Box>
 
           <Box sx={{ mb: 4 }}>

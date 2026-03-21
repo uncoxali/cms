@@ -34,6 +34,13 @@ export interface ProjectSettings {
     customThemes: ThemePreset[];
     tokenExpiration: number;
     tokenRefreshInterval: number;
+    logoSettings?: {
+        type: 'image' | 'custom';
+        text?: string;
+        icon?: string;
+        color?: string;
+        font?: string;
+    } | null;
 }
 
 export interface FileSettings {
@@ -89,6 +96,13 @@ const DEFAULT_SETTINGS: ProjectSettings = {
     customThemes: [],
     tokenExpiration: 7,
     tokenRefreshInterval: 6,
+    logoSettings: {
+        type: 'image',
+        text: 'NexDirect',
+        icon: 'Sparkles',
+        color: '#8B5CF6',
+        font: 'Inter'
+    }
 };
 
 const DEFAULT_FILE_SETTINGS: FileSettings = {
@@ -123,6 +137,7 @@ function mapDbSettings(data: any): Partial<ProjectSettings> {
         customThemes: data.custom_themes || [],
         tokenExpiration: data.token_expiration || DEFAULT_SETTINGS.tokenExpiration,
         tokenRefreshInterval: data.token_refresh_interval || DEFAULT_SETTINGS.tokenRefreshInterval,
+        logoSettings: data.logo_settings || DEFAULT_SETTINGS.logoSettings,
     };
 }
 
@@ -183,6 +198,7 @@ export const useProjectStore = create<ProjectState>()(
                     if (updates.logoUrl !== undefined) payload.project_logo = updates.logoUrl;
                     if (updates.tokenExpiration !== undefined) payload.token_expiration = updates.tokenExpiration;
                     if (updates.tokenRefreshInterval !== undefined) payload.token_refresh_interval = updates.tokenRefreshInterval;
+                    if (updates.logoSettings !== undefined) payload.logo_settings = updates.logoSettings;
 
                     if (Object.keys(payload).length > 0) {
                         await api.patch('/settings', payload);
