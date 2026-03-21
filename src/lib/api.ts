@@ -1,7 +1,7 @@
 // API Base URL - can be configured via environment variable
 // When using separate backend, set NEXT_PUBLIC_API_URL to backend URL (e.g., http://localhost:3001/api)
 // When using Next.js API routes, leave empty or set to '/api'
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 interface RefreshQueueItem {
     resolve: (token: string) => void;
@@ -112,8 +112,8 @@ class ApiClient {
         this.setToken(null);
         if (typeof window !== 'undefined') {
             localStorage.removeItem('nexdirect-token');
-            // Optionally redirect to login
-            // window.location.href = '/admin/login';
+            // Redirect to login
+            window.location.href = '/admin/login';
         }
     }
 

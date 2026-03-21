@@ -10,6 +10,7 @@ import Chip from '@mui/material/Chip';
 import SwaggerUI from 'swagger-ui-react';
 import 'swagger-ui-react/swagger-ui.css';
 import { useSchemaStore } from '@/store/schema';
+import { api, API_BASE } from '@/lib/api';
 import CircularProgress from '@mui/material/CircularProgress';
 
 if (typeof window !== 'undefined') {
@@ -403,7 +404,7 @@ function generateOpenApiSpec(collections: Record<string, CollectionConfig>) {
       version: '1.0.0',
     },
     servers: [
-      { url: '/api', description: 'Current server' },
+      { url: API_BASE, description: 'Current server' },
     ],
     tags: [
       { name: 'Collections', description: 'Collection management' },
@@ -506,7 +507,18 @@ export default function ApiDocsPage() {
             </Box>
           ) : spec ? (
             <Box sx={{ height: 'calc(100vh - 200px)' }}>
-              <SwaggerUI spec={spec} deepLinking tryItOutEnabled />
+              <SwaggerUI 
+                spec={spec} 
+                deepLinking 
+                tryItOutEnabled 
+                requestInterceptor={(request: any) => {
+                  const token = api.getToken();
+                  if (token) {
+                    request.headers.Authorization = `Bearer ${token}`;
+                  }
+                  return request;
+                }}
+              />
             </Box>
           ) : (
             <Box sx={{ p: 4, textAlign: 'center' }}>
@@ -590,7 +602,7 @@ export default function ApiDocsPage() {
                     <Box component='td'><Typography component='code' sx={{ fontFamily: 'monospace', fontSize: 12 }}>/roles</Typography></Box>
                     <Box component='td'>List all roles</Box>
                   </Box>
-                  {Object.entries(collections || {}).slice(0, 5).map(([key, col]) => (
+                  {Object.entries(collections || {}).slice(0, 5).map(([key, col]: [string, any]) => (
                     <Box component='tr' key={key}>
                       <Box component='td'><Chip label='GET' size='small' color='success' sx={{ fontWeight: 700 }} /></Box>
                       <Box component='td'><Typography component='code' sx={{ fontFamily: 'monospace', fontSize: 12 }}>/items/{key}</Typography></Box>
