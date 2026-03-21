@@ -23,7 +23,8 @@ export function useWebSocket(token: string | null) {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const wsUrl = `${protocol}://${window.location.host}/ws?token=${token}`;
+    // Backend runs on port 8055 by default in this project
+    const wsUrl = `${protocol}://${window.location.hostname}:8055/ws?token=${token}`;
 
     setStatus('connecting');
     const ws = new WebSocket(wsUrl);

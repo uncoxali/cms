@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { db } from '../config/database';
 import { AuthenticatedRequest } from '../utils/auth';
 import { toDbDate } from '../utils/date';
+import { wsManager } from '../utils/ws';
 
 export async function getItems(req: AuthenticatedRequest, res: Response) {
     try {
@@ -215,6 +216,14 @@ export async function createItem(req: AuthenticatedRequest, res: Response) {
         });
 
         const item = await db(collection).where('id', id).first();
+
+        // Broadcast event
+        wsManager.broadcast({
+            event: 'item:created',
+            data: { collection, id, item },
+            timestamp: new Date().toISOString()
+        });
+
         res.json({ data: item });
     } catch (error: any) {
         res.status(500).json({ error: error.message });
@@ -248,6 +257,14 @@ export async function updateItem(req: AuthenticatedRequest, res: Response) {
         });
 
         const item = await db(collection).where('id', id).first();
+
+        // Broadcast event
+        wsManager.broadcast({
+            event: 'item:updated',
+            data: { collection, id, item },
+            timestamp: new Date().toISOString()
+        });
+
         res.json({ data: item });
     } catch (error: any) {
         res.status(500).json({ error: error.message });
@@ -294,6 +311,13 @@ export async function deleteItem(req: AuthenticatedRequest, res: Response) {
         });
 
         await db(collection).where('id', id).delete();
+
+        // Broadcast event
+        wsManager.broadcast({
+            event: 'item:deleted',
+            data: { collection, id },
+            timestamp: new Date().toISOString()
+        });
 
         await db('neurofy_activity').insert({
             action: 'delete',

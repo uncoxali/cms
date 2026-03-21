@@ -371,6 +371,23 @@ async function ensureTables() {
         });
     }
 
+    // 15. neurofy_ws_endpoints
+    const hasWsTable = await db.schema.hasTable('neurofy_ws_endpoints');
+    if (!hasWsTable) {
+        await db.schema.createTable('neurofy_ws_endpoints', (table) => {
+            table.string('id').primary();
+            table.string('name').notNullable();
+            table.string('path').notNullable().unique();
+            table.string('collection');
+            table.text('events_json').defaultTo('[]');
+            table.boolean('auth_required').defaultTo(true);
+            table.text('roles_json').defaultTo('[]');
+            table.string('status').defaultTo('active');
+            table.text('description');
+            table.timestamp('created_at').defaultTo(db.fn.now());
+        });
+    }
+
     console.log('✅ Database tables verified');
 }
 

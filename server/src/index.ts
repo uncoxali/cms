@@ -3,8 +3,10 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
+import http from 'http';
 import { config } from './config';
 import { initializeDatabase } from './config/database';
+import { wsManager } from './utils/ws';
 
 // Import routes
 import authRoutes from './routes/auth.routes';
@@ -33,6 +35,7 @@ import translationsRoutes from './routes/translations.routes';
 import initRoutes from './routes/init.routes';
 import chatRoutes from './routes/chat.routes';
 import aiRoutes from './routes/ai.routes';
+import wsRoutes from './routes/ws.routes';
 
 const app = express();
 
@@ -77,9 +80,10 @@ app.use('/api/translations', translationsRoutes);
 app.use('/api/init', initRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/ws-endpoints', wsRoutes);
 
 // ── Health check ──
-app.get('/api/health', (_req, res) => {
+app.get('/api/health', (_req: express.Request, res: express.Response) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -97,11 +101,15 @@ async function start() {
         process.exit(1);
     }
 
-    app.listen(config.port, () => {
+    const httpServer = http.createServer(app);
+    wsManager.init(httpServer);
+
+    httpServer.listen(config.port, () => {
         console.log(`\n🚀 CMS Backend running on http://localhost:${config.port}`);
         console.log(`📁 Database: ${config.dbPath}`);
         console.log(`📂 Uploads: ${config.uploadDir}`);
-        console.log(`🌐 CORS: ${config.corsOrigin}\n`);
+        console.log(`🌐 CORS: ${config.corsOrigin}`);
+        console.log(`🔌 WebSockets: Ready on /ws\n`);
     });
 }
 
