@@ -236,14 +236,33 @@ export async function viewFile(req: any, res: Response) {
         const { id } = req.params;
         const file = await db('neurofy_files').where('id', id).first();
         
-        if (!file || !file.data) {
-            return res.status(404).json({ error: 'File not found or no data' });
+        if (!file) {
+            return res.status(404).json({ error: 'File not found' });
         }
 
-        res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
-        res.setHeader('Content-Length', file.data.length);
-        res.setHeader('Cache-Control', 'public, max-age=31536000');
-        res.send(file.data);
+        // 1. Try serving from Database (BLOB)
+        if (file.data) {
+            res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
+            res.setHeader('Cache-Control', 'public, max-age=31536000');
+            return res.send(file.data);
+        }
+
+        // 2. Fallback to Disk
+        const diskPath = path.isAbsolute(file.filename_disk) 
+            ? file.filename_disk 
+            : path.join(config.uploadDir, file.filename_disk);
+        
+        if (existsSync(diskPath)) {
+            return res.sendFile(diskPath);
+        }
+
+        // 3. Try legacy public directory path
+        const publicPath = path.join(process.cwd(), '..', 'public', 'uploads', path.basename(file.filename_disk));
+        if (existsSync(publicPath)) {
+            return res.sendFile(publicPath);
+        }
+
+        res.status(404).json({ error: 'File content not found (DB or Disk)' });
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }
