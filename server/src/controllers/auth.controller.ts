@@ -23,7 +23,15 @@ export async function login(req: AuthenticatedRequest, res: Response) {
             )
             .first();
 
-        if (!user || !(await verifyPassword(password, user.password_hash))) {
+        if (!user) {
+            console.log(`[AUTH] Login failed: User not found for email: ${email}`);
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        const isMatch = await verifyPassword(password, user.password_hash);
+        if (!isMatch) {
+            console.log(`[AUTH] Login failed: Password mismatch for email: ${email}`);
+            console.log(`[AUTH] Provided: ${password.length} chars, Hash in DB: ${user.password_hash}`);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
