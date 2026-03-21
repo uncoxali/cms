@@ -21,7 +21,8 @@ export { db };
 export async function initializeDatabase() {
     try {
         await db.raw('SELECT 1');
-        console.log('✅ Database connected:', config.dbPath);
+        console.log('✅ Database connected. Client:', db.client.config.client);
+        console.log('📂 Database path (if SQLite):', config.dbPath);
         
         // Ensure required tables exist
         await ensureTables();
