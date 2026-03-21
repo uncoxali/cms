@@ -47,7 +47,7 @@ export default function LoginPage() {
   const theme = useTheme();
 
   const [email, setEmail] = useState('admin@example.com');
-  const [password, setPassword] = useState('admin123');
+  const [password, setPassword] = useState('admin');
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<Role>('admin');
   const [remember, setRemember] = useState(true);
@@ -338,7 +338,7 @@ export default function LoginPage() {
                   size="small"
                   onClick={() => {
                     setEmail(`${r.value}@example.com`);
-                    setPassword(`${r.value}123`);
+                    setPassword(`${r.value}`);
                   }}
                   sx={{
                     py: 1,

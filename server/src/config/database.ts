@@ -98,16 +98,36 @@ async function ensureTables() {
             table.timestamp('created_at').defaultTo(db.fn.now());
         });
 
-        // Seed initial admin user (using same hash as local for convenience)
-        await db('neurofy_users').insert({
-            id: 'admin',
-            email: 'admin@example.com',
-            password_hash: '$2b$10$mJY/45f1QMJtLB4ZM2WO7eyxAFyg4l4vjq7ySjQHuWpk3erqQ.OZy',
-            first_name: 'Admin',
-            last_name: 'User',
-            role: 'role_admin',
-            status: 'active'
-        });
+        // Seed initial users
+        await db('neurofy_users').insert([
+            {
+                id: 'admin',
+                email: 'admin@example.com',
+                password_hash: '$2b$10$idaNQqq2d.XjlLP.Gwncb.dYXdRoWDrMkJ2G8PZhckThuAsVWqf6O', // password: admin
+                first_name: 'Admin',
+                last_name: 'User',
+                role: 'role_admin',
+                status: 'active'
+            },
+            {
+                id: 'editor',
+                email: 'editor@example.com',
+                password_hash: '$2b$10$T7NqJrk13GwHDoKKxxA.ueKb8QFHbMgykugYlBrv.Gjp37S08np1O', // password: editor
+                first_name: 'Editor',
+                last_name: 'User',
+                role: 'role_editor',
+                status: 'active'
+            },
+            {
+                id: 'viewer',
+                email: 'viewer@example.com',
+                password_hash: '$2b$10$c5zHtSvFKc86slLhONhxo.Sge7CuLuwDuMvhxu8UlMFAzzk3XlRD6', // password: viewer
+                first_name: 'Viewer',
+                last_name: 'User',
+                role: 'role_viewer',
+                status: 'active'
+            }
+        ]);
     }
 
     // 3. neurofy_settings
