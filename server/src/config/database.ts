@@ -255,6 +255,122 @@ async function ensureTables() {
         });
     }
 
+    // 9. neurofy_folders
+    const hasFoldersTable = await db.schema.hasTable('neurofy_folders');
+    if (!hasFoldersTable) {
+        await db.schema.createTable('neurofy_folders', (table) => {
+            table.string('id').primary();
+            table.string('name').notNullable();
+            table.string('parent_id').references('id').inTable('neurofy_folders').onDelete('CASCADE');
+            table.string('created_by');
+            table.timestamp('created_at').defaultTo(db.fn.now());
+        });
+    }
+
+    // 10. neurofy_files
+    const hasFilesTable = await db.schema.hasTable('neurofy_files');
+    if (!hasFilesTable) {
+        await db.schema.createTable('neurofy_files', (table) => {
+            table.string('id').primary();
+            table.string('storage').defaultTo('local');
+            table.string('filename_disk').notNullable();
+            table.string('filename_download').notNullable();
+            table.string('title');
+            table.string('type');
+            table.string('mime_type');
+            table.integer('filesize').defaultTo(0);
+            table.text('description');
+            table.text('tags_json').defaultTo('[]');
+            table.string('folder').references('id').inTable('neurofy_folders').onDelete('SET NULL');
+            table.string('uploaded_by');
+            table.timestamp('uploaded_on').defaultTo(db.fn.now());
+            table.timestamp('modified_on').defaultTo(db.fn.now());
+            table.boolean('is_favorite').defaultTo(false);
+        });
+    }
+
+    // 11. neurofy_pages
+    const hasPagesTable = await db.schema.hasTable('neurofy_pages');
+    if (!hasPagesTable) {
+        await db.schema.createTable('neurofy_pages', (table) => {
+            table.increments('id').primary();
+            table.string('title').notNullable();
+            table.string('path').notNullable().unique();
+            table.string('slug').notNullable();
+            table.string('status').defaultTo('draft');
+            table.string('layout').defaultTo('default');
+            table.text('content');
+            table.string('meta_title');
+            table.text('meta_description');
+            table.integer('parent_id').unsigned().references('id').inTable('neurofy_pages').onDelete('SET NULL');
+            table.integer('sort_order').defaultTo(0);
+            table.string('icon');
+            table.boolean('show_in_nav').defaultTo(false);
+            table.text('roles').defaultTo('["admin", "editor", "viewer"]');
+            table.string('redirect_url');
+            table.string('created_by');
+            table.string('updated_by');
+            table.timestamp('created_at').defaultTo(db.fn.now());
+            table.timestamp('updated_at').defaultTo(db.fn.now());
+        });
+
+        // Seed initial page
+        await db('neurofy_pages').insert({
+            title: 'Welcome',
+            path: '/',
+            slug: 'welcome',
+            status: 'published',
+            content: '<h1>Welcome to NexDirect</h1><p>Start managing your content here.</p>',
+            show_in_nav: true,
+            created_by: 'system'
+        });
+    }
+
+    // 12. neurofy_flows
+    const hasFlowsTable = await db.schema.hasTable('neurofy_flows');
+    if (!hasFlowsTable) {
+        await db.schema.createTable('neurofy_flows', (table) => {
+            table.string('id').primary();
+            table.string('name').notNullable();
+            table.text('description');
+            table.string('icon').defaultTo('play_circle');
+            table.string('status').defaultTo('active');
+            table.text('steps_json').notNullable().defaultTo('[]');
+            table.string('trigger_type').defaultTo('manual');
+            table.string('created_by');
+            table.timestamp('created_at').defaultTo(db.fn.now());
+            table.timestamp('updated_at').defaultTo(db.fn.now());
+        });
+    }
+
+    // 13. neurofy_flow_logs
+    const hasFlowLogsTable = await db.schema.hasTable('neurofy_flow_logs');
+    if (!hasFlowLogsTable) {
+        await db.schema.createTable('neurofy_flow_logs', (table) => {
+            table.increments('id').primary();
+            table.string('flow_id').references('id').inTable('neurofy_flows').onDelete('CASCADE');
+            table.string('status').notNullable();
+            table.text('output_json');
+            table.integer('duration_ms').defaultTo(0);
+            table.string('executed_by');
+            table.timestamp('timestamp').defaultTo(db.fn.now());
+        });
+    }
+
+    // 14. neurofy_translations
+    const hasTranslationsTable = await db.schema.hasTable('neurofy_translations');
+    if (!hasTranslationsTable) {
+        await db.schema.createTable('neurofy_translations', (table) => {
+            table.increments('id').primary();
+            table.string('collection').notNullable();
+            table.string('item_id').notNullable();
+            table.string('locale').notNullable();
+            table.string('field').notNullable();
+            table.text('content');
+            table.timestamp('created_at').defaultTo(db.fn.now());
+        });
+    }
+
     console.log('✅ Database tables verified');
 }
 

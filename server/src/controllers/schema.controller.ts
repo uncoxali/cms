@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { db } from '../config/database';
 import { AuthenticatedRequest } from '../utils/auth';
+import { isMySQL, getTables } from '../utils/db';
 
 const SYSTEM_TABLES = [
     'neurofy_users', 'neurofy_roles', 'neurofy_activity',
@@ -11,21 +12,8 @@ const SYSTEM_TABLES = [
 // GET /api/schema — introspect all tables
 export async function getSchema(req: AuthenticatedRequest, res: Response) {
     try {
-        const isMySQL = db.client.config.client === 'mysql2';
-        let tables;
-        
-        if (isMySQL) {
-            const dbName = db.client.connectionSettings.database;
-            const [rows] = await db.raw(
-                "SELECT TABLE_NAME as name FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME NOT LIKE 'knex_%' ORDER BY TABLE_NAME",
-                [dbName]
-            );
-            tables = Array.isArray(rows) ? rows : [rows];
-        } else {
-            tables = await db.raw(
-                `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'knex_%' ORDER BY name`
-            );
-        }
+        const mysql = isMySQL();
+        const tables = await getTables();
 
         const collections: Record<string, any> = {};
         const allRelations = await db('neurofy_relations').select('*').catch(() => []);
@@ -39,7 +27,7 @@ export async function getSchema(req: AuthenticatedRequest, res: Response) {
             let foreignKeys: any[] = [];
             let indexes: any[] = [];
 
-            if (isMySQL) {
+            if (mysql) {
                 const [fkRows] = await db.raw(`
                     SELECT COLUMN_NAME as \`from\`, REFERENCED_TABLE_NAME as \`table\`, REFERENCED_COLUMN_NAME as \`to\`
                     FROM information_schema.KEY_COLUMN_USAGE
@@ -75,7 +63,7 @@ export async function getSchema(req: AuthenticatedRequest, res: Response) {
                 const rel = tableRelations.find((r: any) => r.field === colName);
                 
                 let isUnique = false;
-                if (isMySQL) {
+                if (mysql) {
                     isUnique = indexes.some((idx: any) => idx.unique && idx.column === colName);
                 } else {
                     isUnique = indexes.some((idx: any) => idx.unique && idx.columns.includes(colName));
@@ -124,12 +112,12 @@ export async function getCollectionSchema(req: AuthenticatedRequest, res: Respon
         const { collection } = req.params;
         const exists = await db.schema.hasTable(collection);
         if (!exists) return res.status(404).json({ error: 'Collection not found' });
-
-        const isMySQL = db.client.config.client === 'mysql2';
+        
+        const mysql = isMySQL();
         const columnsInfo = await db(collection).columnInfo() as Record<string, any>;
         
         let foreignKeys: any[] = [];
-        if (isMySQL) {
+        if (mysql) {
             const [fkRows] = await db.raw(`
                 SELECT COLUMN_NAME as \`from\`, REFERENCED_TABLE_NAME as \`table\`, REFERENCED_COLUMN_NAME as \`to\`
                 FROM information_schema.KEY_COLUMN_USAGE
