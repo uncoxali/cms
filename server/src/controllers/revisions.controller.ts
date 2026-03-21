@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { db } from '../config/database';
 import { AuthenticatedRequest } from '../utils/auth';
+import { toDbDate } from '../utils/date';
 
 export async function getRevisions(req: AuthenticatedRequest, res: Response) {
     try {
@@ -60,7 +61,7 @@ export async function createRevision(req: AuthenticatedRequest, res: Response) {
             user_id: req.auth?.userId || 'system',
             user_name: req.auth?.email || 'Unknown',
             status: status || 'draft',
-            date_created: new Date().toISOString(),
+            date_created: toDbDate(),
         });
 
         return res.json({
@@ -76,7 +77,7 @@ export async function createRevision(req: AuthenticatedRequest, res: Response) {
                     name: req.auth?.email || 'Unknown',
                 },
                 status: status || 'draft',
-                dateCreated: new Date().toISOString(),
+                dateCreated: toDbDate(),
             },
         });
     } catch (error: any) {
@@ -108,7 +109,7 @@ export async function createRevision(req: AuthenticatedRequest, res: Response) {
                     user_id: req.auth?.userId || 'system',
                     user_name: req.auth?.email || 'Unknown',
                     status: body.status || 'draft',
-                    date_created: new Date().toISOString(),
+                    date_created: toDbDate(),
                 });
 
                 return res.json({ data: { id, ...body } });

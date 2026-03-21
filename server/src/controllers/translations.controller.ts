@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { db } from '../config/database';
 import { AuthenticatedRequest } from '../utils/auth';
+import { toDbDate } from '../utils/date';
 
 // GET /api/translations
 export async function getTranslations(req: AuthenticatedRequest, res: Response) {
@@ -38,14 +39,14 @@ export async function createOrUpdateTranslation(req: AuthenticatedRequest, res: 
         if (existing) {
             await db('neurofy_translations')
                 .where({ id: existing.id })
-                .update({ value, updated_at: new Date().toISOString() });
+                .update({ value, updated_at: toDbDate() });
             return res.json({ data: { ...existing, value } });
         }
 
         const [id] = await db('neurofy_translations').insert({
             collection, item_id, field, locale, value,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+            created_at: toDbDate(),
+            updated_at: toDbDate(),
         });
 
         res.status(201).json({ data: { id, collection, item_id, field, locale, value } });

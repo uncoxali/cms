@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { db } from '../config/database';
 import { config } from '../config';
 import { AuthenticatedRequest } from '../utils/auth';
+import { toDbDate } from '../utils/date';
 import fs from 'fs';
 import path from 'path';
 
@@ -9,25 +10,8 @@ export async function getTrash(req: AuthenticatedRequest, res: Response) {
     try {
         const collection = req.query.collection as string;
 
-        let hasTrashTable = false;
-        try {
-            const tables = await db.raw("SELECT name FROM sqlite_master WHERE type='table' AND name='neurofy_trash'");
-            hasTrashTable = tables.length > 0 || (tables[0] && tables[0].name);
-        } catch {
-            hasTrashTable = false;
-        }
-
+        const hasTrashTable = await db.schema.hasTable('neurofy_trash');
         if (!hasTrashTable) {
-            await db.schema.createTable('neurofy_trash', (table: any) => {
-                table.increments('trash_id').primary();
-                table.string('item_id').notNullable();
-                table.string('collection').notNullable();
-                table.text('data_json').notNullable();
-                table.string('deleted_by');
-                table.timestamp('deleted_at').defaultTo(db.fn.now());
-                table.timestamp('expires_at');
-            });
-            await db.raw('CREATE UNIQUE INDEX IF NOT EXISTS idx_trash_item ON neurofy_trash(item_id, collection)');
             return res.json({ data: [] });
         }
 
@@ -91,14 +75,14 @@ export async function restoreItem(req: AuthenticatedRequest, res: Response) {
                 await db('neurofy_pages').insert({
                     ...pageData,
                     roles: Array.isArray(roles) ? JSON.stringify(roles) : roles || '[]',
-                    updated_at: new Date().toISOString(),
+                    updated_at: toDbDate(),
                 }).onConflict('id').merge();
             } else if (collection === 'neurofy_files') {
                 const { tags: fileTags, ...fileData } = restoreData;
                 await db('neurofy_files').insert({
                     ...fileData,
                     tags_json: Array.isArray(fileTags) ? JSON.stringify(fileTags) : fileTags || '[]',
-                    modified_on: new Date().toISOString(),
+                    modified_on: toDbDate(),
                 }).onConflict('id').merge();
             } else if (collection === 'neurofy_users') {
                 await db('neurofy_users').insert(restoreData).onConflict('id').merge();

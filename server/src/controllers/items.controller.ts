@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { db } from '../config/database';
 import { AuthenticatedRequest } from '../utils/auth';
+import { toDbDate } from '../utils/date';
 
 export async function getItems(req: AuthenticatedRequest, res: Response) {
     try {
@@ -180,8 +181,8 @@ export async function createItem(req: AuthenticatedRequest, res: Response) {
 
         const columnsInfo = await db(collection).columnInfo() as Record<string, any>;
         const colNames = Object.keys(columnsInfo);
-        if (colNames.includes('date_created')) body.date_created = new Date().toISOString();
-        if (colNames.includes('date_updated')) body.date_updated = new Date().toISOString();
+        if (colNames.includes('date_created')) body.date_created = toDbDate();
+        if (colNames.includes('date_updated')) body.date_updated = toDbDate();
 
         const relations = await db('neurofy_relations').where('collection', collection).catch(() => []);
         for (const rel of relations) {
@@ -233,7 +234,7 @@ export async function updateItem(req: AuthenticatedRequest, res: Response) {
 
         const columnsInfo = await db(collection).columnInfo() as Record<string, any>;
         const colNames = Object.keys(columnsInfo);
-        if (colNames.includes('date_updated')) body.date_updated = new Date().toISOString();
+        if (colNames.includes('date_updated')) body.date_updated = toDbDate();
 
         await db(collection).where('id', id).update(body);
 
@@ -288,8 +289,8 @@ export async function deleteItem(req: AuthenticatedRequest, res: Response) {
                 _collection_label: collection,
             }),
             deleted_by: req.auth?.email || 'system',
-            deleted_at: new Date().toISOString(),
-            expires_at: expiresAt.toISOString(),
+            deleted_at: toDbDate(),
+            expires_at: toDbDate(expiresAt),
         });
 
         await db(collection).where('id', id).delete();

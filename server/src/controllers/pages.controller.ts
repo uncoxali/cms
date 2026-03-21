@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { db } from '../config/database';
 import { AuthenticatedRequest } from '../utils/auth';
+import { toDbDate } from '../utils/date';
 
 export async function getPages(req: AuthenticatedRequest, res: Response) {
     try {
@@ -67,8 +68,8 @@ export async function createPage(req: AuthenticatedRequest, res: Response) {
             redirect_url: body.redirect_url || null,
             created_by: req.auth?.email || 'system',
             updated_by: req.auth?.email || 'system',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+            created_at: toDbDate(),
+            updated_at: toDbDate(),
         });
 
         await db('neurofy_activity').insert({
@@ -100,7 +101,7 @@ export async function updatePage(req: AuthenticatedRequest, res: Response) {
             if (dup) return res.status(409).json({ error: `Path "${body.path}" already exists` });
         }
 
-        const updates: any = { updated_at: new Date().toISOString(), updated_by: req.auth?.email || 'system' };
+        const updates: any = { updated_at: toDbDate(), updated_by: req.auth?.email || 'system' };
         const allowed = ['title', 'path', 'slug', 'status', 'layout', 'content', 'meta_title', 'meta_description', 'parent_id', 'sort_order', 'icon', 'show_in_nav', 'redirect_url'];
         for (const key of allowed) {
             if (body[key] !== undefined) {
@@ -136,19 +137,7 @@ export async function deletePage(req: AuthenticatedRequest, res: Response) {
         const page = await db('neurofy_pages').where('id', id).first();
         if (!page) return res.status(404).json({ error: 'Page not found' });
 
-        const hasTrashTable = await db.schema.hasTable('neurofy_trash');
-        if (!hasTrashTable) {
-            await db.schema.createTable('neurofy_trash', (table: any) => {
-                table.increments('trash_id').primary();
-                table.string('item_id').notNullable();
-                table.string('collection').notNullable();
-                table.text('data_json').notNullable();
-                table.string('deleted_by');
-                table.timestamp('deleted_at').defaultTo(db.fn.now());
-                table.timestamp('expires_at');
-            });
-            await db.raw('CREATE UNIQUE INDEX IF NOT EXISTS idx_trash_item ON neurofy_trash(item_id, collection)');
-        }
+        // Table is ensured in database.ts
 
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 30);
@@ -162,8 +151,8 @@ export async function deletePage(req: AuthenticatedRequest, res: Response) {
                 _collection_label: 'Pages',
             }),
             deleted_by: req.auth?.email || 'system',
-            deleted_at: new Date().toISOString(),
-            expires_at: expiresAt.toISOString(),
+            deleted_at: toDbDate(),
+            expires_at: toDbDate(expiresAt),
         });
 
         await db('neurofy_pages').where('parent_id', id).update({ parent_id: null });

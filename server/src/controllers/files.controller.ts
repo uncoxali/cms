@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { db } from '../config/database';
 import { config } from '../config';
 import { AuthenticatedRequest } from '../utils/auth';
+import { toDbDate } from '../utils/date';
 import path from 'path';
 import fs from 'fs/promises';
 import { existsSync } from 'fs';
@@ -128,7 +129,7 @@ export async function uploadFile(req: AuthenticatedRequest, res: Response) {
             }
         }
 
-        const now = new Date().toISOString();
+        const now = toDbDate();
 
         await db('neurofy_files').insert({
             id,
@@ -169,7 +170,7 @@ export async function updateFile(req: AuthenticatedRequest, res: Response) {
         const { id } = req.params;
         const body = req.body;
 
-        const updateData: any = { modified_on: new Date().toISOString() };
+        const updateData: any = { modified_on: toDbDate() };
         if (body.title !== undefined) updateData.title = body.title;
         if (body.description !== undefined) updateData.description = body.description;
         if (body.folder !== undefined) updateData.folder = body.folder;
@@ -190,19 +191,7 @@ export async function deleteFile(req: AuthenticatedRequest, res: Response) {
         const file = await db('neurofy_files').where('id', id).first();
         if (!file) return res.status(404).json({ error: 'File not found' });
 
-        const hasTrashTable = await db.schema.hasTable('neurofy_trash');
-        if (!hasTrashTable) {
-            await db.schema.createTable('neurofy_trash', (table: any) => {
-                table.increments('trash_id').primary();
-                table.string('item_id').notNullable();
-                table.string('collection').notNullable();
-                table.text('data_json').notNullable();
-                table.string('deleted_by');
-                table.timestamp('deleted_at').defaultTo(db.fn.now());
-                table.timestamp('expires_at');
-            });
-            await db.raw('CREATE UNIQUE INDEX IF NOT EXISTS idx_trash_item ON neurofy_trash(item_id, collection)');
-        }
+        // Table is ensured in database.ts
 
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 30);
@@ -217,8 +206,8 @@ export async function deleteFile(req: AuthenticatedRequest, res: Response) {
                 _collection_label: 'Files',
             }),
             deleted_by: req.auth?.email || 'system',
-            deleted_at: new Date().toISOString(),
-            expires_at: expiresAt.toISOString(),
+            deleted_at: toDbDate(),
+            expires_at: toDbDate(expiresAt),
         });
 
         await db('neurofy_files').where('id', id).delete();

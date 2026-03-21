@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { db } from '../config/database';
 import { verifyPassword, generateToken, verifyToken, hashPassword, AuthenticatedRequest } from '../utils/auth';
+import { toDbDate } from '../utils/date';
 
 export async function login(req: AuthenticatedRequest, res: Response) {
     try {
@@ -40,7 +41,8 @@ export async function login(req: AuthenticatedRequest, res: Response) {
             adminAccess: !!user.admin_access,
         }, tokenExpirationDays);
 
-        await db('neurofy_users').where('id', user.id).update({ last_access: new Date().toISOString() });
+        // Update last access
+    await db('neurofy_users').where('id', user.id).update({ last_access: toDbDate() });
 
         let permissions = [];
         try { permissions = user.permissions_json ? JSON.parse(user.permissions_json) : []; } catch {}

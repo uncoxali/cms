@@ -383,7 +383,7 @@ export async function deleteCollection(req: AuthenticatedRequest, res: Response)
             return res.status(403).json({ error: 'Cannot delete system collections' });
         }
 
-        await db.raw(`DROP TABLE IF EXISTS "${collection}"`);
+        await db.schema.dropTableIfExists(collection);
         await db('neurofy_collections_meta').where('collection', collection).delete();
         await db('neurofy_relations')
             .where('collection', collection)

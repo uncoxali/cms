@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { db } from '../config/database';
 import { hashPassword, AuthenticatedRequest } from '../utils/auth';
 import { v4 as uuidv4 } from 'uuid';
+import { toDbDate } from '../utils/date';
 
 export async function getUsers(req: AuthenticatedRequest, res: Response) {
     try {
@@ -46,7 +47,7 @@ export async function createUser(req: AuthenticatedRequest, res: Response) {
             email, password_hash: passwordHash,
             first_name: first_name || '', last_name: last_name || '',
             role: role || 'role_viewer', status: status || (password ? 'active' : 'invited'),
-            created_at: new Date().toISOString(),
+            created_at: toDbDate(),
         });
 
         await db('neurofy_activity').insert({
@@ -87,19 +88,7 @@ export async function deleteUser(req: AuthenticatedRequest, res: Response) {
         if (!user) return res.status(404).json({ error: 'User not found' });
 
         // Ensure trash table exists
-        const hasTrashTable = await db.schema.hasTable('neurofy_trash');
-        if (!hasTrashTable) {
-            await db.schema.createTable('neurofy_trash', (table: any) => {
-                table.increments('trash_id').primary();
-                table.string('item_id').notNullable();
-                table.string('collection').notNullable();
-                table.text('data_json').notNullable();
-                table.string('deleted_by');
-                table.timestamp('deleted_at').defaultTo(db.fn.now());
-                table.timestamp('expires_at');
-            });
-            await db.raw('CREATE UNIQUE INDEX IF NOT EXISTS idx_trash_item ON neurofy_trash(item_id, collection)');
-        }
+        // Table is ensured in database.ts
 
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 30);
@@ -113,8 +102,8 @@ export async function deleteUser(req: AuthenticatedRequest, res: Response) {
                 _collection_label: 'Users',
             }),
             deleted_by: req.auth?.email || 'system',
-            deleted_at: new Date().toISOString(),
-            expires_at: expiresAt.toISOString(),
+            deleted_at: toDbDate(),
+            expires_at: toDbDate(expiresAt),
         });
 
         // Delete from users
