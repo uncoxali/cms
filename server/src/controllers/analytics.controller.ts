@@ -4,8 +4,7 @@ import { AuthenticatedRequest } from '../utils/auth';
 
 async function ensureTableExists(tableName: string) {
     try {
-        const tables = await db.raw(`SELECT name FROM sqlite_master WHERE type='table' AND name='${tableName}'`);
-        return tables && tables.length > 0;
+        return await db.schema.hasTable(tableName);
     } catch {
         return false;
     }

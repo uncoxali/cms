@@ -11,9 +11,21 @@ const SYSTEM_TABLES = [
 // GET /api/dashboard
 export async function getDashboard(req: AuthenticatedRequest, res: Response) {
     try {
-        const tables = await db.raw(
-            `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'knex_%' ORDER BY name`
-        );
+        const isMySQL = db.client.config.client === 'mysql2';
+        let tables;
+        
+        if (isMySQL) {
+            const dbName = db.client.connectionSettings.database;
+            const [rows] = await db.raw(
+                "SELECT TABLE_NAME as name FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME NOT LIKE 'knex_%' ORDER BY TABLE_NAME",
+                [dbName]
+            );
+            tables = Array.isArray(rows) ? rows : [rows];
+        } else {
+            tables = await db.raw(
+                `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'knex_%' ORDER BY name`
+            );
+        }
         const userTables = tables.filter((t: any) => !SYSTEM_TABLES.includes(t.name));
 
         let totalItems = 0;

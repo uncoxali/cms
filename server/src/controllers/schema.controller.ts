@@ -15,11 +15,12 @@ export async function getSchema(req: AuthenticatedRequest, res: Response) {
         let tables;
         
         if (isMySQL) {
+            const dbName = db.client.connectionSettings.database;
             const [rows] = await db.raw(
                 "SELECT TABLE_NAME as name FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME NOT LIKE 'knex_%' ORDER BY TABLE_NAME",
-                [db.client.connectionSettings.database]
+                [dbName]
             );
-            tables = rows;
+            tables = Array.isArray(rows) ? rows : [rows];
         } else {
             tables = await db.raw(
                 `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'knex_%' ORDER BY name`
