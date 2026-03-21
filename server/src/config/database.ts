@@ -286,7 +286,15 @@ async function ensureTables() {
             table.timestamp('uploaded_on').defaultTo(db.fn.now());
             table.timestamp('modified_on').defaultTo(db.fn.now());
             table.boolean('is_favorite').defaultTo(false);
+            table.specificType('data', db.client.config.client === 'mysql2' ? 'LONGBLOB' : 'BLOB');
         });
+    } else {
+        // Compatibility check for data column
+        if (!(await db.schema.hasColumn('neurofy_files', 'data'))) {
+            await db.schema.alterTable('neurofy_files', (table) => {
+                table.specificType('data', db.client.config.client === 'mysql2' ? 'LONGBLOB' : 'BLOB');
+            });
+        }
     }
 
     // 11. neurofy_pages

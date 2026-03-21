@@ -26,6 +26,7 @@ import {
 import { useAuthStore } from '@/store/auth';
 import { useProjectStore } from '@/store/project';
 import { useTranslation } from '@/lib/i18n';
+import { api, getUploadUrl } from '@/lib/api';
 import { DARK_THEMES, LIGHT_THEMES, THEME_LIST, ThemePreset } from '@/lib/themes';
 import NotificationBell from './NotificationBell';
 
@@ -203,7 +204,7 @@ export default function Header() {
               borderRadius: '10px', cursor: 'pointer', transition: 'all 150ms ease',
               '&:hover': { bgcolor: alpha(theme.palette.text.primary, isDark ? 0.06 : 0.04) },
             }}>
-              <Avatar src={user.avatar || undefined} sx={{
+              <Avatar src={getUploadUrl(user.avatar)} sx={{
                 width: 32, height: 32, fontSize: 13, fontWeight: 700,
                 background: `linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)`, color: '#fff',
               }}>
@@ -222,7 +223,7 @@ export default function Header() {
               <Box sx={{ width: 260, py: 1 }}>
                 <Box sx={{ px: 2.5, py: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Avatar src={user.avatar || undefined} sx={{ width: 40, height: 40, background: `linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)`, color: '#fff' }}>
+                    <Avatar src={getUploadUrl(user.avatar)} sx={{ width: 40, height: 40, background: `linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)`, color: '#fff' }}>
                       {!user.avatar && (user.name || 'U').charAt(0).toUpperCase()}
                     </Avatar>
                     <Box>

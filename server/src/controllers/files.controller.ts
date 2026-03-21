@@ -40,6 +40,7 @@ function normalizeFileRow(row: any) {
         ...row,
         tags: row.tags_json ? JSON.parse(row.tags_json) : [],
         tags_json: undefined,
+        data: undefined, // Don't send binary data in json
     };
 }
 
@@ -131,9 +132,11 @@ export async function uploadFile(req: AuthenticatedRequest, res: Response) {
 
         const now = toDbDate();
 
+        const fileBuffer = await fs.readFile(file.path);
+
         await db('neurofy_files').insert({
             id,
-            storage: 'local',
+            storage: 'database',
             filename_disk: filenameDisk,
             filename_download: originalName,
             title,
@@ -147,6 +150,7 @@ export async function uploadFile(req: AuthenticatedRequest, res: Response) {
             uploaded_on: now,
             modified_on: now,
             is_favorite: 0,
+            data: fileBuffer,
         });
 
         await db('neurofy_activity').insert({
@@ -222,6 +226,47 @@ export async function deleteFile(req: AuthenticatedRequest, res: Response) {
         });
 
         res.json({ success: true, movedToTrash: true });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+}
+
+export async function viewFile(req: any, res: Response) {
+    try {
+        const { id } = req.params;
+        const file = await db('neurofy_files').where('id', id).first();
+        
+        if (!file || !file.data) {
+            return res.status(404).json({ error: 'File not found or no data' });
+        }
+
+        res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
+        res.setHeader('Content-Length', file.data.length);
+        res.setHeader('Cache-Control', 'public, max-age=31536000');
+        res.send(file.data);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+}
+
+export async function migrateToDb(req: AuthenticatedRequest, res: Response) {
+    try {
+        const filesInDb = await db('neurofy_files').where({ storage: 'local' }).orWhereNull('data');
+        let count = 0;
+        
+        for (const file of filesInDb) {
+            const filePath = path.join(config.uploadDir, file.filename_disk);
+            if (existsSync(filePath)) {
+                const buffer = await fs.readFile(filePath);
+                await db('neurofy_files').where('id', file.id).update({
+                    data: buffer,
+                    storage: 'database'
+                });
+                count++;
+            }
+        }
+        
+        res.json({ success: true, migrated_count: count });
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }

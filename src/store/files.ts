@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { api } from '@/lib/api';
+import { api, API_BASE, UPLOADS_BASE } from '@/lib/api';
 
 export interface FileItem {
     id: string;
@@ -77,7 +77,7 @@ export const useFilesStore = create<FilesState>()(
                         description: f.description || undefined,
                         tags: f.tags || [],
                         isFavorite: !!f.is_favorite,
-                        url: f.filename_disk ? `/uploads/${f.filename_disk}` : undefined,
+                        url: f.filename_disk ? `${UPLOADS_BASE}/${f.filename_disk}` : undefined,
                     }));
                     const folders: Folder[] = (res.folders || []).map((f: any) => ({
                         id: f.id,

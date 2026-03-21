@@ -19,7 +19,7 @@ import { useTheme, alpha } from '@mui/material/styles';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 import { useTranslation } from '@/lib/i18n';
-import { api } from '@/lib/api';
+import { api, getUploadUrl, UPLOADS_BASE } from '@/lib/api';
 
 export default function ProfilePage() {
   const theme = useTheme();
@@ -320,7 +320,7 @@ export default function ProfilePage() {
                       .startsWith('image/') ? (
                       <Box
                         component='img'
-                        src={`/uploads/${file.filename_disk}`}
+                        src={getUploadUrl(file.filename_disk)}
                         alt={file.filename_download}
                         sx={{
                           width: '100%',

@@ -38,7 +38,7 @@ import { useRolesStore } from '@/store/roles';
 import { useActivityStore } from '@/store/activity';
 import { useNotificationsStore } from '@/store/notifications';
 import { useAuthStore } from '@/store/auth';
-import { api } from '@/lib/api';
+import { api, getUploadUrl, UPLOADS_BASE } from '@/lib/api';
 import {
   Save,
   ArrowLeft,
@@ -1614,7 +1614,7 @@ export default function UserEditorPage({ params }: { params: Promise<{ id: strin
                         .startsWith('image/') ? (
                         <Box
                           component='img'
-                          src={`/uploads/${file.filename_disk}`}
+                          src={getUploadUrl(file.filename_disk)}
                           alt={file.filename_download}
                           sx={{
                             width: '100%',

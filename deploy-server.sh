@@ -6,10 +6,17 @@ SERVER_USER="root"
 REPO_URL="https://github.com/uncoxali/cms.git"
 APP_DIR="/var/www/cms"
 
+# SSH Key
+SSH_KEY="/Users/alimohamadi/.ssh/id_ed25519"
+
 echo "🚀 Starting Deployment Process for $SERVER_IP..."
 
+# 0. Sync Local Repo to Server (using rsync to push changes)
+echo "📂 Synchronizing local repository to server..."
+rsync -avz -e "ssh -i $SSH_KEY" --exclude 'node_modules' --exclude '.git' --exclude 'server/node_modules' --exclude 'server/uploads' --exclude 'public/uploads' ./ $SERVER_USER@$SERVER_IP:$APP_DIR/
+
 # 1. Update system and install dependencies
-ssh $SERVER_USER@$SERVER_IP << EOF
+ssh -i $SSH_KEY $SERVER_USER@$SERVER_IP << EOF
     echo "📦 Installing system dependencies..."
     curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
     apt-get update
@@ -48,9 +55,14 @@ DB_HOST=localhost
 DB_USER=admin
 DB_PASSWORD=7WLggPn7xnRp
 DB_NAME=nexdirect
+UPLOAD_DIR=\$APP_DIR/uploads
 CORS_ORIGIN=*
 EOT
     fi
+
+    # Create uploads directory if not exists
+    mkdir -p \$APP_DIR/uploads
+    chmod 775 \$APP_DIR/uploads
 
     # Start with PM2
     echo "🏃 Starting Backend with PM2..."

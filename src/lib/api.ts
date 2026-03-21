@@ -2,6 +2,30 @@
 // When using separate backend, set NEXT_PUBLIC_API_URL to backend URL (e.g., http://localhost:3001/api)
 // When using Next.js API routes, leave empty or set to '/api'
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+export const UPLOADS_BASE = API_BASE.replace(/\/api$/, '') + '/uploads';
+
+export function getUploadUrl(path: string | null | undefined): string | undefined {
+    if (!path) return undefined;
+    if (path.startsWith('http')) return path;
+    
+    // UUID regex to identify if path is a file ID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    
+    // If it's a UUID and doesn't start with /uploads, it's a direct file ID
+    if (!path.startsWith('/uploads/') && uuidRegex.test(path)) {
+        return `${API_BASE}/files/${path}/view`;
+    }
+
+    // If the path starts with /uploads, prefix with backend origin
+    if (cleanPath.startsWith('/uploads')) {
+        return `${API_BASE.replace(/\/api$/, '')}${cleanPath}`;
+    }
+    
+    // Fallback
+    return `${UPLOADS_BASE}${cleanPath}`;
+}
 
 interface RefreshQueueItem {
     resolve: (token: string) => void;

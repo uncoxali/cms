@@ -14,7 +14,7 @@ export const config = {
     dbUser: process.env.DB_USER || 'root',
     dbPassword: process.env.DB_PASSWORD || '',
     dbName: process.env.DB_NAME || 'nexdirect',
-    uploadDir: process.env.UPLOAD_DIR || path.join(process.cwd(), '..', 'public', 'uploads'),
+    uploadDir: process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads'),
     maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '50') * 1024 * 1024,
     corsOrigin: process.env.CORS_ORIGIN || '*',
 };
