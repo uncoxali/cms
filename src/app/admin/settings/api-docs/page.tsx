@@ -496,6 +496,7 @@ export default function ApiDocsPage() {
           <Tab label='Swagger UI' />
           <Tab label='Quick Reference' />
           <Tab label='Authentication' />
+          <Tab label='WebSockets' />
         </Tabs>
       </Box>
 
@@ -663,6 +664,144 @@ Accept: application/json`}
 {`POST /api/auth/logout`}
                 </Typography>
               </Paper>
+            </Paper>
+          </Box>
+        )}
+        {activeTab === 3 && (
+          <Box sx={{ p: 4, maxWidth: 900 }}>
+            <Typography variant='h6' fontWeight={700} gutterBottom>
+              WebSocket API Reference
+            </Typography>
+            <Typography variant='body2' color='text.secondary' paragraph>
+              The CMS provides a real-time WebSocket server for events like chat, presence, and system notifications.
+            </Typography>
+
+            <Paper sx={{ p: 3, mb: 3 }}>
+              <Typography variant='subtitle2' fontWeight={700} gutterBottom>
+                Connection URL
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: 'action.hover', p: 1, borderRadius: 1 }}>
+                <Typography component='code' sx={{ fontFamily: 'monospace', flexGrow: 1 }}>
+                  {`ws://${typeof window !== 'undefined' ? window.location.host : 'localhost:3000'}/ws?token=<your-jwt-token>`}
+                </Typography>
+                <Chip label="WS" size="small" color="primary" />
+              </Box>
+              <Typography variant='caption' color='text.secondary' sx={{ mt: 1, display: 'block' }}>
+                Note: Authentication token is required as a query parameter.
+              </Typography>
+            </Paper>
+
+            <Typography variant='subtitle1' fontWeight={700} sx={{ mb: 2 }}>
+              Client-to-Server Events
+            </Typography>
+            <Box component='table' sx={{ width: '100%', mb: 4, '& td, & th': { py: 1.5, px: 2, borderBottom: 1, borderColor: 'divider' } }}>
+              <Box component='thead'>
+                <Box component='tr'>
+                  <Box component='th' sx={{ textAlign: 'left', fontWeight: 600 }}>Event</Box>
+                  <Box component='th' sx={{ textAlign: 'left', fontWeight: 600 }}>Payload Example</Box>
+                  <Box component='th' sx={{ textAlign: 'left', fontWeight: 600 }}>Description</Box>
+                </Box>
+              </Box>
+              <Box component='tbody'>
+                <Box component='tr'>
+                  <Box component='td'><Typography sx={{ fontWeight: 600, color: 'primary.main' }}>join_room</Typography></Box>
+                  <Box component='td'>
+                    <Typography component='pre' sx={{ fontFamily: 'monospace', fontSize: 11, m: 0, bgcolor: 'grey.50', p: 1 }}>
+                      {`{ "event": "join_room", "room": "sales" }`}
+                    </Typography>
+                  </Box>
+                  <Box component='td'><Typography variant='body2'>Join a specific broadcast room</Typography></Box>
+                </Box>
+                <Box component='tr'>
+                  <Box component='td'><Typography sx={{ fontWeight: 600, color: 'primary.main' }}>leave_room</Typography></Box>
+                  <Box component='td'>
+                    <Typography component='pre' sx={{ fontFamily: 'monospace', fontSize: 11, m: 0, bgcolor: 'grey.50', p: 1 }}>
+                      {`{ "event": "leave_room", "room": "sales" }`}
+                    </Typography>
+                  </Box>
+                  <Box component='td'><Typography variant='body2'>Leave a specific broadcast room</Typography></Box>
+                </Box>
+                <Box component='tr'>
+                  <Box component='td'><Typography sx={{ fontWeight: 600, color: 'primary.main' }}>chat:message</Typography></Box>
+                  <Box component='td'>
+                    <Typography component='pre' sx={{ fontFamily: 'monospace', fontSize: 11, m: 0, bgcolor: 'grey.50', p: 1 }}>
+                      {`{ "event": "chat:message", "room": "global", "data": { "message": "hello" } }`}
+                    </Typography>
+                  </Box>
+                  <Box component='td'><Typography variant='body2'>Send a chat message to a room</Typography></Box>
+                </Box>
+                <Box component='tr'>
+                  <Box component='td'><Typography sx={{ fontWeight: 600, color: 'primary.main' }}>chat:typing</Typography></Box>
+                  <Box component='td'>
+                    <Typography component='pre' sx={{ fontFamily: 'monospace', fontSize: 11, m: 0, bgcolor: 'grey.50', p: 1 }}>
+                      {`{ "event": "chat:typing", "room": "global" }`}
+                    </Typography>
+                  </Box>
+                  <Box component='td'><Typography variant='body2'>Broadcast typing status</Typography></Box>
+                </Box>
+              </Box>
+            </Box>
+
+            <Typography variant='subtitle1' fontWeight={700} sx={{ mb: 2 }}>
+              Server-to-Client Events
+            </Typography>
+            <Box component='table' sx={{ width: '100%', '& td, & th': { py: 1.5, px: 2, borderBottom: 1, borderColor: 'divider' } }}>
+              <Box component='thead'>
+                <Box component='tr'>
+                  <Box component='th' sx={{ textAlign: 'left', fontWeight: 600 }}>Event</Box>
+                  <Box component='th' sx={{ textAlign: 'left', fontWeight: 600 }}>Data Structure</Box>
+                  <Box component='th' sx={{ textAlign: 'left', fontWeight: 600 }}>Description</Box>
+                </Box>
+              </Box>
+              <Box component='tbody'>
+                <Box component='tr'>
+                  <Box component='td'><Typography sx={{ fontWeight: 600, color: 'success.main' }}>connected</Typography></Box>
+                  <Box component='td'>
+                    <Typography component='pre' sx={{ fontFamily: 'monospace', fontSize: 11, m: 0, bgcolor: 'grey.50', p: 1 }}>
+                      {`{ "event": "connected", "data": { "clientId": "...", "userId": "..." } }`}
+                    </Typography>
+                  </Box>
+                  <Box component='td'><Typography variant='body2'>Sent immediately after successful connection</Typography></Box>
+                </Box>
+                <Box component='tr'>
+                  <Box component='td'><Typography sx={{ fontWeight: 600, color: 'success.main' }}>user:online</Typography></Box>
+                  <Box component='td'>
+                    <Typography component='pre' sx={{ fontFamily: 'monospace', fontSize: 11, m: 0, bgcolor: 'grey.50', p: 1 }}>
+                      {`{ "event": "user:online", "data": { "userId": "..." } }`}
+                    </Typography>
+                  </Box>
+                  <Box component='td'><Typography variant='body2'>Broadcast when a user comes online</Typography></Box>
+                </Box>
+                <Box component='tr'>
+                  <Box component='td'><Typography sx={{ fontWeight: 600, color: 'success.main' }}>chat:message</Typography></Box>
+                  <Box component='td'>
+                    <Typography component='pre' sx={{ fontFamily: 'monospace', fontSize: 11, m: 0, bgcolor: 'grey.50', p: 1 }}>
+                      {`{ "event": "chat:message", "data": { "message": "...", "email": "..." }, "room": "..." }`}
+                    </Typography>
+                  </Box>
+                  <Box component='td'><Typography variant='body2'>Received when a new message is sent to a room</Typography></Box>
+                </Box>
+              </Box>
+            </Box>
+
+            <Paper sx={{ p: 3, mt: 4, bgcolor: 'info.main', color: 'white' }}>
+              <Typography variant='subtitle2' fontWeight={700} gutterBottom>
+                Implementation Example (JS)
+              </Typography>
+              <Typography component='pre' sx={{ fontFamily: 'monospace', fontSize: 12, overflowX: 'auto', m: 0 }}>
+{`const socket = new WebSocket('ws://' + window.location.host + '/ws?token=' + token);
+
+socket.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log('Received:', data);
+};
+
+socket.send(JSON.stringify({
+  event: 'chat:message',
+  room: 'global',
+  data: { message: 'Hello World!' }
+}));`}
+              </Typography>
             </Paper>
           </Box>
         )}
