@@ -10,9 +10,8 @@ import { existsSync } from 'fs';
 const UPLOAD_DIR = config.uploadDir;
 
 async function ensureUploadDir() {
-    if (!existsSync(UPLOAD_DIR)) {
-        await fs.mkdir(UPLOAD_DIR, { recursive: true });
-    }
+    await fs.mkdir(UPLOAD_DIR, { recursive: true });
+    await fs.mkdir(path.join(UPLOAD_DIR, 'tmp'), { recursive: true });
 }
 
 function inferFileType(mimeType: string | null | undefined): string {
@@ -132,7 +131,8 @@ export async function uploadFile(req: AuthenticatedRequest, res: Response) {
 
         const now = toDbDate();
 
-        const fileBuffer = await fs.readFile(file.path);
+        // Read from final path — rename() already moved the file away from file.path
+        const fileBuffer = await fs.readFile(filePath);
 
         await db('neurofy_files').insert({
             id,

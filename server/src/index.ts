@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import http from 'http';
+import path from 'path';
+import fs from 'fs/promises';
 import { config } from './config';
 import { initializeDatabase } from './config/database';
 import { wsManager } from './utils/ws';
@@ -107,6 +109,10 @@ async function start() {
         console.error('❌ Failed to initialize database. Exiting.');
         process.exit(1);
     }
+
+    // Multer writes to uploadDir/tmp before controllers run — must exist before any upload.
+    await fs.mkdir(config.uploadDir, { recursive: true });
+    await fs.mkdir(path.join(config.uploadDir, 'tmp'), { recursive: true });
 
     const httpServer = http.createServer(app);
     wsManager.init(httpServer);
