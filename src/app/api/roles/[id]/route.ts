@@ -49,8 +49,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     // Check if any users have this role
     const users = await db('neurofy_users').where('role', id).count('* as count').first();
-    if ((users as any)?.count > 0) {
-        return NextResponse.json({ error: 'Cannot delete role with assigned users' }, { status: 400 });
+    const userCount = (users as any)?.count || 0;
+    if (userCount > 0) {
+        return NextResponse.json({
+            error: `Cannot delete this role because ${userCount} user${userCount > 1 ? 's are' : ' is'} assigned to it. Please reassign or remove the users first.`
+        }, { status: 400 });
     }
 
     await db('neurofy_roles').where('id', id).delete();

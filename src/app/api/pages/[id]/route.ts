@@ -69,7 +69,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 }
 
-// DELETE /api/pages/[id]
+// DELETE /api/pages/[id] — soft delete page to trash
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const check = await requireEditor(getAuthFromRequest(request));
     if (!check.authorized) return check.response;
@@ -81,7 +81,39 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         const page = await db('neurofy_pages').where('id', id).first();
         if (!page) return NextResponse.json({ error: 'Page not found' }, { status: 404 });
 
-        // Unparent children
+        // Ensure trash table exists
+        const hasTrashTable = await db.schema.hasTable('neurofy_trash');
+        if (!hasTrashTable) {
+            await db.schema.createTable('neurofy_trash', (table) => {
+                table.increments('trash_id').primary();
+                table.string('item_id').notNullable();
+                table.string('collection').notNullable();
+                table.text('data_json').notNullable();
+                table.string('deleted_by');
+                table.timestamp('deleted_at').defaultTo(db.fn.now());
+                table.timestamp('expires_at');
+            });
+            await db.raw('CREATE UNIQUE INDEX IF NOT EXISTS idx_trash_item ON neurofy_trash(item_id, collection)');
+        }
+
+        // Move to trash with 30 days expiry
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+
+        await db('neurofy_trash').insert({
+            item_id: id,
+            collection: 'neurofy_pages',
+            data_json: JSON.stringify({
+                ...page,
+                roles: page.roles ? JSON.parse(page.roles) : [],
+                _collection_label: 'Pages',
+            }),
+            deleted_by: check.auth.email,
+            deleted_at: new Date().toISOString(),
+            expires_at: expiresAt.toISOString(),
+        });
+
+        // Unparent children and delete from pages table
         await db('neurofy_pages').where('parent_id', id).update({ parent_id: null });
         await db('neurofy_pages').where('id', id).delete();
 
@@ -91,10 +123,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
             user_id: check.auth.userId,
             collection: 'neurofy_pages',
             item: String(id),
-            meta_json: JSON.stringify({ title: page.title, path: page.path }),
+            meta_json: JSON.stringify({ title: page.title, path: page.path, _action: 'moved_to_trash' }),
         });
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({ success: true, movedToTrash: true });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

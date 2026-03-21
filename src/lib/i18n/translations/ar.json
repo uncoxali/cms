@@ -239,5 +239,80 @@
     "online": "متصل",
     "offline": "غير متصل",
     "noMessages": "لا توجد رسائل بعد"
+  },
+  "analytics": {
+    "title": "التحليلات",
+    "overview": "نظرة عامة",
+    "activity": "النشاط",
+    "content": "المحتوى",
+    "topUsers": "أفضل المستخدمين",
+    "collectionStats": "إحصائيات المجموعات",
+    "totalItems": "إجمالي العناصر",
+    "totalUsers": "إجمالي المستخدمين",
+    "totalFiles": "إجمالي الملفات",
+    "todayActivity": "نشاط اليوم",
+    "export": "تصدير",
+    "refresh": "تحديث",
+    "days7": "7 أيام",
+    "days30": "30 يوم",
+    "days90": "90 يوم",
+    "allTime": "كل الوقت"
+  },
+  "trash": {
+    "title": "سلة المهملات",
+    "emptyTrash": "تفريغ السلة",
+    "restoreItem": "استعادة العنصر",
+    "deleteForever": "حذف نهائي",
+    "emptyConfirm": "سيؤدي هذا إلى حذف جميع العناصر نهائياً.",
+    "restoreConfirm": "هل أنت متأكد أنك تريد استعادة هذا العنصر؟",
+    "deleteConfirm": "لا يمكن التراجع عن هذا الإجراء.",
+    "itemRestored": "تم استعادة العنصر بنجاح",
+    "itemDeleted": "تم حذف العنصر نهائياً",
+    "trashEmptied": "تم تفريغ السلة بنجاح"
+  },
+  "templates": {
+    "title": "القوالب",
+    "newTemplate": "قالب جديد",
+    "templateName": "اسم القالب",
+    "useTemplate": "استخدام القالب",
+    "createFromItem": "إنشاء من عنصر",
+    "noTemplates": "لا توجد قوالب بعد",
+    "templateCreated": "تم إنشاء القالب بنجاح"
+  },
+  "exportImport": {
+    "title": "التصدير والاستيراد",
+    "export": "تصدير",
+    "import": "استيراد",
+    "exportData": "تصدير البيانات",
+    "importData": "استيراد البيانات",
+    "selectCollection": "اختر المجموعة",
+    "allCollections": "جميع المجموعات",
+    "format": "التنسيق",
+    "csv": "CSV (جدول)",
+    "json": "JSON (بيانات)",
+    "downloadTemplate": "تنزيل القالب",
+    "importComplete": "اكتمل الاستيراد",
+    "importFailed": "فشل الاستيراد",
+    "preview": "معاينة"
+  },
+  "media": {
+    "title": "تحسين الوسائط",
+    "quality": "جودة الصورة",
+    "compression": "الضغط",
+    "dimensions": "أقصى أبعاد",
+    "formats": "صيغ الإخراج",
+    "lazyLoading": "التحميل البطيء",
+    "presets": "إعدادات الصور المسبقة",
+    "webpPriority": "أولوية WebP",
+    "autoResize": "تغيير الحجم تلقائياً",
+    "preserveExif": "الحفاظ على بيانات EXIF"
+  },
+  "dashboards": {
+    "title": "لوحات القيادة المخصصة",
+    "newDashboard": "لوحة جديدة",
+    "setDefault": "تعيين كافتراضي",
+    "addWidget": "إضافة أداة",
+    "noDashboards": "لا توجد لوحات بعد",
+    "dashboardCreated": "تم إنشاء اللوحة بنجاح"
   }
 }

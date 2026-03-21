@@ -239,5 +239,80 @@
     "online": "آنلاین",
     "offline": "آفلاین",
     "noMessages": "هنوز پیامی وجود ندارد"
+  },
+  "analytics": {
+    "title": "آمار و گزارش",
+    "overview": "نمای کلی",
+    "activity": "فعالیت",
+    "content": "محتوا",
+    "topUsers": "کاربران فعال",
+    "collectionStats": "آمار کالکشن‌ها",
+    "totalItems": "کل آیتم‌ها",
+    "totalUsers": "کل کاربران",
+    "totalFiles": "کل فایل‌ها",
+    "todayActivity": "فعالیت امروز",
+    "export": "خروجی",
+    "refresh": "بروزرسانی",
+    "days7": "۷ روز",
+    "days30": "۳۰ روز",
+    "days90": "۹۰ روز",
+    "allTime": "همه زمان"
+  },
+  "trash": {
+    "title": "سطل بازیافت",
+    "emptyTrash": "خالی کردن سطل",
+    "restoreItem": "بازیابی آیتم",
+    "deleteForever": "حذف دائمی",
+    "emptyConfirm": "این عمل تمام آیتم‌ها را برای همیشه حذف خواهد کرد.",
+    "restoreConfirm": "آیا مطمئن هستید که می‌خواهید این آیتم را بازیابی کنید؟",
+    "deleteConfirm": "این عمل قابل بازگشت نیست.",
+    "itemRestored": "آیتم با موفقیت بازیابی شد",
+    "itemDeleted": "آیتم برای همیشه حذف شد",
+    "trashEmptied": "سطل بازیافت با موفقیت خالی شد"
+  },
+  "templates": {
+    "title": "قالب‌ها",
+    "newTemplate": "قالب جدید",
+    "templateName": "نام قالب",
+    "useTemplate": "استفاده از قالب",
+    "createFromItem": "ایجاد از آیتم",
+    "noTemplates": "هنوز قالبی وجود ندارد",
+    "templateCreated": "قالب با موفقیت ایجاد شد"
+  },
+  "exportImport": {
+    "title": "خروجی و ورودی",
+    "export": "خروجی",
+    "import": "ورودی",
+    "exportData": "خروجی داده",
+    "importData": "ورودی داده",
+    "selectCollection": "انتخاب کالکشن",
+    "allCollections": "همه کالکشن‌ها",
+    "format": "فرمت",
+    "csv": "CSV (اکسل)",
+    "json": "JSON (داده)",
+    "downloadTemplate": "دانلود الگو",
+    "importComplete": "ورودی کامل شد",
+    "importFailed": "ورودی ناموفق بود",
+    "preview": "پیش‌نمایش"
+  },
+  "media": {
+    "title": "بهینه‌سازی رسانه",
+    "quality": "کیفیت تصویر",
+    "compression": "فشرده‌سازی",
+    "dimensions": "حداکثر ابعاد",
+    "formats": "فرمت‌های خروجی",
+    "lazyLoading": "بارگذاری تنبل",
+    "presets": "پیش‌تنظیم تصاویر",
+    "webpPriority": "اولویت WebP",
+    "autoResize": "تغییر اندازه خودکار",
+    "preserveExif": "حفظ اطلاعات EXIF"
+  },
+  "dashboards": {
+    "title": "داشبورد سفارشی",
+    "newDashboard": "داشبورد جدید",
+    "setDefault": "تنظیم به‌عنوان پیش‌فرض",
+    "addWidget": "افزودن ویجت",
+    "noDashboards": "هنوز داشبوردی وجود ندارد",
+    "dashboardCreated": "داشبورد با موفقیت ایجاد شد"
   }
 }

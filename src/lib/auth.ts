@@ -16,11 +16,11 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
     return bcrypt.compare(password, hash);
 }
 
-export async function generateToken(payload: any): Promise<string> {
+export async function generateToken(payload: any, expirationDays: number = 7): Promise<string> {
     return new jose.SignJWT(payload)
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
-        .setExpirationTime('7d')
+        .setExpirationTime(`${expirationDays}d`)
         .sign(JWT_SECRET);
 }
 

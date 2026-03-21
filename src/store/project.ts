@@ -32,6 +32,8 @@ export interface ProjectSettings {
     minPasswordLength: number;
     allowedOrigins: string;
     customThemes: ThemePreset[];
+    tokenExpiration: number;
+    tokenRefreshInterval: number;
 }
 
 export interface FileSettings {
@@ -85,6 +87,8 @@ const DEFAULT_SETTINGS: ProjectSettings = {
     minPasswordLength: 8,
     allowedOrigins: '*',
     customThemes: [],
+    tokenExpiration: 7,
+    tokenRefreshInterval: 6,
 };
 
 const DEFAULT_FILE_SETTINGS: FileSettings = {
@@ -117,6 +121,8 @@ function mapDbSettings(data: any): Partial<ProjectSettings> {
         featureFlags: data.feature_flags || DEFAULT_SETTINGS.featureFlags,
         logoUrl: data.project_logo || '',
         customThemes: data.custom_themes || [],
+        tokenExpiration: data.token_expiration || DEFAULT_SETTINGS.tokenExpiration,
+        tokenRefreshInterval: data.token_refresh_interval || DEFAULT_SETTINGS.tokenRefreshInterval,
     };
 }
 
@@ -175,6 +181,8 @@ export const useProjectStore = create<ProjectState>()(
                     if (updates.numberFormat !== undefined) payload.number_format = updates.numberFormat;
                     if (updates.featureFlags !== undefined) payload.feature_flags = updates.featureFlags;
                     if (updates.logoUrl !== undefined) payload.project_logo = updates.logoUrl;
+                    if (updates.tokenExpiration !== undefined) payload.token_expiration = updates.tokenExpiration;
+                    if (updates.tokenRefreshInterval !== undefined) payload.token_refresh_interval = updates.tokenRefreshInterval;
 
                     if (Object.keys(payload).length > 0) {
                         await api.patch('/settings', payload);

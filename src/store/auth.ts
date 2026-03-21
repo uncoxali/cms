@@ -87,6 +87,68 @@ interface UserData {
     permissions?: CollectionPermission[] | Record<string, any>;
 }
 
+// Token refresh scheduler
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+export function getTokenRefreshInterval(): number {
+    // Get from localStorage (project settings)
+    try {
+        const stored = localStorage.getItem('nexdirect-project');
+        if (stored) {
+            const settings = JSON.parse(stored);
+            const interval = settings?.state?.settings?.tokenRefreshInterval || 6;
+            return interval * 24 * 60 * 60 * 1000; // Convert days to milliseconds
+        }
+    } catch {}
+    return 6 * 24 * 60 * 60 * 1000; // Default: 6 days
+}
+
+export function getTokenExpirationDays(): number {
+    // Get from localStorage (project settings)
+    try {
+        const stored = localStorage.getItem('nexdirect-project');
+        if (stored) {
+            const settings = JSON.parse(stored);
+            return settings?.state?.settings?.tokenExpiration || 7;
+        }
+    } catch {}
+    return 7; // Default: 7 days
+}
+
+function scheduleTokenRefresh(refreshFn: () => Promise<boolean>) {
+    // Clear existing timer
+    if (refreshTimer) {
+        clearTimeout(refreshTimer);
+    }
+    
+    // Get refresh interval from settings
+    const REFRESH_INTERVAL = getTokenRefreshInterval();
+    
+    // Don't schedule if interval is 0 (disabled)
+    if (REFRESH_INTERVAL <= 0) {
+        console.log('[Auth] Auto-refresh is disabled');
+        return;
+    }
+    
+    console.log(`[Auth] Token refresh scheduled every ${REFRESH_INTERVAL / (24 * 60 * 60 * 1000)} days`);
+    
+    refreshTimer = setTimeout(async () => {
+        console.log('[Auth] Auto-refreshing token...');
+        const success = await refreshFn();
+        if (success) {
+            // Schedule next refresh
+            scheduleTokenRefresh(refreshFn);
+        }
+    }, REFRESH_INTERVAL);
+}
+
+function clearTokenRefresh() {
+    if (refreshTimer) {
+        clearTimeout(refreshTimer);
+        refreshTimer = null;
+    }
+}
+
 interface AuthState {
     user: UserData | null;
     role: Role;
@@ -96,6 +158,7 @@ interface AuthState {
     _hasHydrated: boolean;
     loginWithApi: (email: string, password: string) => Promise<boolean>;
     restoreSession: () => Promise<boolean>;
+    refreshToken: () => Promise<boolean>;
     login: (role: Role) => void;
     logout: () => void;
     setError: (error: string | null) => void;
@@ -142,6 +205,9 @@ export const useAuthStore = create<AuthState>()(
                         error: null,
                     });
 
+                    // Schedule token refresh
+                    scheduleTokenRefresh(get().refreshToken);
+
                     return true;
                 } catch (err: any) {
                     set({ loading: false, error: err.message || 'Login failed' });
@@ -174,10 +240,51 @@ export const useAuthStore = create<AuthState>()(
                         role,
                         token,
                     });
+                    
+                    // Schedule token refresh
+                    scheduleTokenRefresh(get().refreshToken);
+                    
                     return true;
                 } catch {
                     set({ user: null, role: null, token: null });
                     localStorage.removeItem('nexdirect-token');
+                    return false;
+                }
+            },
+
+            refreshToken: async () => {
+                const { token } = get();
+                if (!token) return false;
+
+                try {
+                    const res = await api.post('/auth/refresh');
+                    
+                    if (res.access_token) {
+                        api.setToken(res.access_token);
+                        localStorage.setItem('nexdirect-token', res.access_token);
+                        
+                        const u = res.user;
+                        const role = deriveRole(u.admin_access, u.permissions);
+
+                        set({
+                            user: {
+                                id: u.id,
+                                name: `${u.first_name} ${u.last_name}`,
+                                email: u.email,
+                                avatar: u.avatar || undefined,
+                                role_id: u.role,
+                                role_name: u.role_name,
+                                admin_access: !!u.admin_access,
+                                permissions: u.permissions || [],
+                            },
+                            role,
+                            token: res.access_token,
+                        });
+                        return true;
+                    }
+                    return false;
+                } catch (err) {
+                    console.error('[Auth] Token refresh failed:', err);
                     return false;
                 }
             },
@@ -193,6 +300,9 @@ export const useAuthStore = create<AuthState>()(
                 }),
 
             logout: async () => {
+                // Clear token refresh timer
+                clearTokenRefresh();
+                
                 try {
                     await fetch('/api/auth/logout', { method: 'POST' });
                 } catch { /* ignore */ }

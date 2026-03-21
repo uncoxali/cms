@@ -133,8 +133,13 @@ export default function UserEditorPage({ params }: { params: Promise<{ id: strin
   const { id } = use(params);
   const isNew = id === 'new';
   const router = useRouter();
-  const { roles } = useRolesStore();
+  const { roles, fetchRoles } = useRolesStore();
   const { logs, addLog } = useActivityStore();
+
+  // Fetch roles on mount
+  useEffect(() => {
+    fetchRoles();
+  }, [fetchRoles]);
   const { addNotification } = useNotificationsStore();
   const currentUser = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.role);

@@ -136,6 +136,8 @@ export default function ProjectSettingsPage() {
     minPasswordLength: 8,
     allowedOrigins: '*',
     customThemes: [],
+    tokenExpiration: 7,
+    tokenRefreshInterval: 6,
   };
 
   useEffect(() => { fetchSettings(); }, [fetchSettings]);
@@ -720,26 +722,100 @@ export default function ProjectSettingsPage() {
 
         {/* Security Tab */}
         <TabPanel value={activeTab} index={3}>
-          <Paper sx={{ p: 3, borderRadius: '16px', maxWidth: 800 }}>
-            <Typography variant="h6" fontWeight={700} mb={3}>Security Settings</Typography>
-            <Grid container spacing={3}>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField fullWidth type="number" label="Session Timeout" value={form.sessionTimeout}
-                  onChange={(e) => updateForm({ sessionTimeout: Number(e.target.value) })}
-                  helperText="Minutes before auto-logout" />
-              </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField fullWidth type="number" label="Min Password Length" value={form.minPasswordLength}
-                  onChange={(e) => updateForm({ minPasswordLength: Number(e.target.value) })}
-                  helperText="Minimum characters" />
-              </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField fullWidth label="Allowed Origins" value={form.allowedOrigins}
-                  onChange={(e) => updateForm({ allowedOrigins: e.target.value })}
-                  helperText="Comma-separated domains" />
-              </Grid>
+          <Grid container spacing={3}>
+            <Grid size={{ xs: 12, lg: 8 }}>
+              <Paper sx={{ p: 3, borderRadius: '16px' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                  <Box sx={{ width: 44, height: 44, borderRadius: '12px', bgcolor: alpha('#EF4444', 0.1), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Shield size={22} color="#EF4444" />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" fontWeight={700}>Security Settings</Typography>
+                    <Typography variant="caption" color="text.secondary">Configure authentication and access control</Typography>
+                  </Box>
+                </Box>
+                <Grid container spacing={3}>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <TextField fullWidth type="number" label="Session Timeout" value={form.sessionTimeout}
+                      onChange={(e) => updateForm({ sessionTimeout: Number(e.target.value) })}
+                      helperText="Minutes before auto-logout" />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <TextField fullWidth type="number" label="Min Password Length" value={form.minPasswordLength}
+                      onChange={(e) => updateForm({ minPasswordLength: Number(e.target.value) })}
+                      helperText="Minimum characters" />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <TextField fullWidth label="Allowed Origins" value={form.allowedOrigins}
+                      onChange={(e) => updateForm({ allowedOrigins: e.target.value })}
+                      helperText="Comma-separated domains" />
+                  </Grid>
+                </Grid>
+              </Paper>
             </Grid>
-          </Paper>
+
+            <Grid size={{ xs: 12, lg: 4 }}>
+              <Paper sx={{ p: 3, borderRadius: '16px' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                  <Box sx={{ width: 44, height: 44, borderRadius: '12px', bgcolor: alpha('#8B5CF6', 0.1), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Lock size={22} color="#8B5CF6" />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" fontWeight={700}>Token Settings</Typography>
+                    <Typography variant="caption" color="text.secondary">Configure JWT token expiration</Typography>
+                  </Box>
+                </Box>
+                
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12 }}>
+                    <TextField
+                      select
+                      fullWidth
+                      label="Token Expiration"
+                      value={form.tokenExpiration || 7}
+                      onChange={(e) => updateForm({ tokenExpiration: Number(e.target.value) })}
+                      helperText="Days until token expires"
+                    >
+                      <MenuItem value={1}>1 Day</MenuItem>
+                      <MenuItem value={3}>3 Days</MenuItem>
+                      <MenuItem value={7}>7 Days (Recommended)</MenuItem>
+                      <MenuItem value={14}>14 Days</MenuItem>
+                      <MenuItem value={30}>30 Days</MenuItem>
+                      <MenuItem value={90}>90 Days</MenuItem>
+                    </TextField>
+                  </Grid>
+                  
+                  <Grid size={{ xs: 12 }}>
+                    <TextField
+                      select
+                      fullWidth
+                      label="Auto Refresh Interval"
+                      value={form.tokenRefreshInterval || 6}
+                      onChange={(e) => updateForm({ tokenRefreshInterval: Number(e.target.value) })}
+                      helperText="Auto-refresh before expiration"
+                    >
+                      <MenuItem value={1}>1 Day before expiry</MenuItem>
+                      <MenuItem value={3}>3 Days before expiry</MenuItem>
+                      <MenuItem value={6}>6 Days before expiry (Recommended)</MenuItem>
+                      <MenuItem value={0}>Disabled</MenuItem>
+                    </TextField>
+                  </Grid>
+                </Grid>
+
+                <Box sx={{ mt: 3, p: 2, bgcolor: alpha('#8B5CF6', 0.05), borderRadius: '12px' }}>
+                  <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                    <strong>Current Settings:</strong>
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    - Token expires after {(form.tokenExpiration || 7)} day{(form.tokenExpiration || 7) > 1 ? 's' : ''}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    - Auto-refresh every {(form.tokenRefreshInterval || 6)} day{(form.tokenRefreshInterval || 6) > 1 ? 's' : ''}
+                  </Typography>
+                </Box>
+              </Paper>
+            </Grid>
+          </Grid>
         </TabPanel>
 
         {/* Modules Tab */}

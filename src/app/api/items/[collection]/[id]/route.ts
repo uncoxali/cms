@@ -102,7 +102,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 }
 
-// DELETE /api/items/[collection]/[id] — delete item (editor+ only)
+// DELETE /api/items/[collection]/[id] — soft delete item to trash (editor+ only)
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const check = await requireEditor(getAuthFromRequest(request));
     if (!check.authorized) return check.response;
@@ -114,6 +114,45 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         const item = await db(collection).where('id', id).first();
         if (!item) return NextResponse.json({ error: 'Item not found' }, { status: 404 });
 
+        // Ensure trash table exists
+        const hasTrashTable = await db.schema.hasTable('neurofy_trash');
+        if (!hasTrashTable) {
+            await db.schema.createTable('neurofy_trash', (table) => {
+                table.increments('trash_id').primary();
+                table.string('item_id').notNullable();
+                table.string('collection').notNullable();
+                table.text('data_json').notNullable();
+                table.string('deleted_by');
+                table.timestamp('deleted_at').defaultTo(db.fn.now());
+                table.timestamp('expires_at');
+            });
+            await db.raw('CREATE UNIQUE INDEX IF NOT EXISTS idx_trash_item ON neurofy_trash(item_id, collection)');
+        }
+
+        // Get collection label
+        let collectionLabel = collection;
+        try {
+            const colMeta = await db('neurofy_collections').where('name', collection).first();
+            if (colMeta) collectionLabel = colMeta.label || collection;
+        } catch {}
+
+        // Move to trash with 30 days expiry
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+
+        await db('neurofy_trash').insert({
+            item_id: id,
+            collection,
+            data_json: JSON.stringify({
+                ...item,
+                _collection_label: collectionLabel,
+            }),
+            deleted_by: check.auth.email,
+            deleted_at: new Date().toISOString(),
+            expires_at: expiresAt.toISOString(),
+        });
+
+        // Delete from original collection
         await db(collection).where('id', id).delete();
 
         // Log activity
@@ -123,10 +162,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
             user_id: check.auth.userId,
             collection,
             item: id,
-            meta_json: JSON.stringify(item),
+            meta_json: JSON.stringify({ ...item, _action: 'moved_to_trash' }),
         });
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({ success: true, movedToTrash: true });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

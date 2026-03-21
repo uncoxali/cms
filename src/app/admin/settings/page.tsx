@@ -27,6 +27,10 @@ import {
   Bell,
   BookOpen,
   ArrowRight,
+  LayoutTemplate,
+  Download,
+  LayoutDashboard,
+  Images,
 } from 'lucide-react';
 
 const SETTINGS_SECTIONS = [
@@ -140,6 +144,20 @@ const SETTINGS_SECTIONS = [
         color: '#F59E0B',
       },
       {
+        title: 'Templates',
+        description: 'Create reusable content templates',
+        icon: LayoutTemplate,
+        path: '/admin/settings/templates',
+        color: '#EC4899',
+      },
+      {
+        title: 'Export & Import',
+        description: 'Export and import data in CSV/JSON',
+        icon: Download,
+        path: '/admin/settings/export-import',
+        color: '#14B8A6',
+      },
+      {
         title: 'API Documentation',
         description: 'View API docs and authentication',
         icon: BookOpen,
@@ -183,6 +201,20 @@ const SETTINGS_SECTIONS = [
         icon: Settings,
         path: '/admin/settings/project',
         color: '#6366F1',
+      },
+      {
+        title: 'Custom Dashboards',
+        description: 'Create personalized dashboard layouts',
+        icon: LayoutDashboard,
+        path: '/admin/settings/dashboards',
+        color: '#8B5CF6',
+      },
+      {
+        title: 'Media Optimization',
+        description: 'Configure image processing settings',
+        icon: Images,
+        path: '/admin/settings/media',
+        color: '#EC4899',
       },
       {
         title: 'Bookmarks',

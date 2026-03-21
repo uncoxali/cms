@@ -368,10 +368,19 @@ export default function RolesListPage() {
                       </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                      <Users size={16} color='#8b5cf6' />
-                      <Typography variant='caption' fontWeight={600} color='text.primary'>
+                      <Users size={16} color={(role.userCount || 0) > 0 ? '#f59e0b' : '#8b5cf6'} />
+                      <Typography
+                        variant='caption'
+                        fontWeight={600}
+                        color={(role.userCount || 0) > 0 ? 'warning.main' : 'text.primary'}
+                      >
                         {role.userCount || 0} users
                       </Typography>
+                      {(role.userCount || 0) > 0 && (
+                        <Typography variant='caption' color='text.secondary' fontSize={10}>
+                          (cannot delete)
+                        </Typography>
+                      )}
                     </Box>
                   </Box>
 
@@ -420,9 +429,15 @@ export default function RolesListPage() {
           <ListItemText>Duplicate</ListItemText>
         </MenuItem>
         <Divider />
-        <MenuItem onClick={() => menuRole && handleDelete(menuRole)} sx={{ color: 'error.main' }}>
-          <ListItemIcon><Trash2 size={16} color='inherit' /></ListItemIcon>
-          <ListItemText>Delete</ListItemText>
+        <MenuItem
+          onClick={() => menuRole && handleDelete(menuRole)}
+          sx={{ color: menuRole && menuRole.userCount > 0 ? 'text.disabled' : 'error.main' }}
+          disabled={menuRole && menuRole.userCount > 0}
+        >
+          <ListItemIcon><Trash2 size={16} color="inherit" /></ListItemIcon>
+          <ListItemText
+            primary={menuRole && menuRole.userCount > 0 ? `Cannot delete (${menuRole.userCount} users)` : 'Delete'}
+          />
         </MenuItem>
       </Menu>
 

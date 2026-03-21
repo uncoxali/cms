@@ -239,5 +239,80 @@
     "online": "Online",
     "offline": "Offline",
     "noMessages": "No messages yet"
+  },
+  "analytics": {
+    "title": "Analytics",
+    "overview": "Overview",
+    "activity": "Activity",
+    "content": "Content",
+    "topUsers": "Top Users",
+    "collectionStats": "Collection Stats",
+    "totalItems": "Total Items",
+    "totalUsers": "Total Users",
+    "totalFiles": "Total Files",
+    "todayActivity": "Today's Activity",
+    "export": "Export",
+    "refresh": "Refresh",
+    "days7": "7 Days",
+    "days30": "30 Days",
+    "days90": "90 Days",
+    "allTime": "All Time"
+  },
+  "trash": {
+    "title": "Trash",
+    "emptyTrash": "Empty Trash",
+    "restoreItem": "Restore Item",
+    "deleteForever": "Delete Forever",
+    "emptyConfirm": "This will permanently delete all items in trash.",
+    "restoreConfirm": "Are you sure you want to restore this item?",
+    "deleteConfirm": "This action cannot be undone.",
+    "itemRestored": "Item restored successfully",
+    "itemDeleted": "Item permanently deleted",
+    "trashEmptied": "Trash emptied successfully"
+  },
+  "templates": {
+    "title": "Templates",
+    "newTemplate": "New Template",
+    "templateName": "Template Name",
+    "useTemplate": "Use Template",
+    "createFromItem": "Create from Item",
+    "noTemplates": "No templates yet",
+    "templateCreated": "Template created successfully"
+  },
+  "exportImport": {
+    "title": "Export & Import",
+    "export": "Export",
+    "import": "Import",
+    "exportData": "Export Data",
+    "importData": "Import Data",
+    "selectCollection": "Select Collection",
+    "allCollections": "All Collections",
+    "format": "Format",
+    "csv": "CSV (Spreadsheet)",
+    "json": "JSON (Data)",
+    "downloadTemplate": "Download Template",
+    "importComplete": "Import Complete",
+    "importFailed": "Import Failed",
+    "preview": "Preview"
+  },
+  "media": {
+    "title": "Media Optimization",
+    "quality": "Image Quality",
+    "compression": "Compression",
+    "dimensions": "Max Dimensions",
+    "formats": "Output Formats",
+    "lazyLoading": "Lazy Loading",
+    "presets": "Image Presets",
+    "webpPriority": "WebP Priority",
+    "autoResize": "Auto Resize",
+    "preserveExif": "Preserve EXIF"
+  },
+  "dashboards": {
+    "title": "Custom Dashboards",
+    "newDashboard": "New Dashboard",
+    "setDefault": "Set as Default",
+    "addWidget": "Add Widget",
+    "noDashboards": "No dashboards yet",
+    "dashboardCreated": "Dashboard created successfully"
   }
 }

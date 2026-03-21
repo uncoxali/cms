@@ -62,7 +62,7 @@ export default function UsersPage() {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const role = useAuthStore((s) => s.role);
-  const { roles } = useRolesStore();
+  const { roles, fetchRoles } = useRolesStore();
   const { addLog } = useActivityStore();
   const { addNotification } = useNotificationsStore();
   const confirm = useConfirm();
@@ -78,6 +78,11 @@ export default function UsersPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteForm, setInviteForm] = useState({ firstName: '', lastName: '', email: '', roleId: 'role_editor' });
   const [bulkMenuAnchor, setBulkMenuAnchor] = useState<null | HTMLElement>(null);
+
+  // Fetch roles on mount
+  useEffect(() => {
+    fetchRoles();
+  }, [fetchRoles]);
 
   useEffect(() => {
     if (role === 'admin') {

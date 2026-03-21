@@ -1,25 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { verifyPassword, generateToken } from '@/lib/auth';
+import { verifyToken, generateToken } from '@/lib/auth';
 
+// POST /api/auth/refresh — refresh JWT token
 export async function POST(request: NextRequest) {
     try {
-        const { email, password } = await request.json();
+        // Get the current token from Authorization header or cookie
+        const token =
+            request.headers.get('Authorization')?.replace('Bearer ', '') ||
+            request.cookies.get('session')?.value;
 
-        if (!email || !password) {
-            return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+        if (!token) {
+            return NextResponse.json({ error: 'No token provided' }, { status: 401 });
+        }
+
+        // Verify the current token
+        const payload = await verifyToken(token);
+        if (!payload) {
+            return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
         }
 
         const db = getDb();
 
+        // Fetch fresh user data from DB
         const user = await db('neurofy_users')
             .leftJoin('neurofy_roles', 'neurofy_users.role', 'neurofy_roles.id')
-            .where('neurofy_users.email', email)
+            .where('neurofy_users.id', payload.userId as string)
             .where('neurofy_users.status', 'active')
             .select(
                 'neurofy_users.id',
                 'neurofy_users.email',
-                'neurofy_users.password_hash',
                 'neurofy_users.first_name',
                 'neurofy_users.last_name',
                 'neurofy_users.avatar',
@@ -32,17 +42,11 @@ export async function POST(request: NextRequest) {
             .first();
 
         if (!user) {
-            return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
-        }
-
-        const isValid = await verifyPassword(password, user.password_hash);
-
-        if (!isValid) {
-            return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+            return NextResponse.json({ error: 'User not found or inactive' }, { status: 401 });
         }
 
         // Get token expiration from settings
-        let tokenExpirationDays = 7; // Default 7 days
+        let tokenExpirationDays = 7;
         try {
             const settings = await db('neurofy_settings').where('key', 'token_expiration').first();
             if (settings && settings.value) {
@@ -50,23 +54,24 @@ export async function POST(request: NextRequest) {
             }
         } catch {}
 
-        // Generate Token
-        const token = await generateToken({
+        // Generate new token with fresh user data
+        const newToken = await generateToken({
             userId: user.id,
             email: user.email,
             roleId: user.role_id,
             adminAccess: !!user.admin_access,
         }, tokenExpirationDays);
 
-        // Update last_access
-        await db('neurofy_users').where('id', user.id).update({ last_access: new Date().toISOString() });
-
-        // Set Cookie and Return Data
+        // Parse permissions
         let permissions = [];
-        try { permissions = user.permissions_json ? JSON.parse(user.permissions_json) : []; } catch { permissions = []; }
+        try {
+            permissions = user.permissions_json ? JSON.parse(user.permissions_json) : [];
+        } catch {
+            permissions = [];
+        }
 
         const response = NextResponse.json({
-            access_token: token,
+            access_token: newToken,
             expires: 60 * 60 * 24 * tokenExpirationDays,
             token_expiration_days: tokenExpirationDays,
             user: {
@@ -83,7 +88,8 @@ export async function POST(request: NextRequest) {
             }
         });
 
-        response.cookies.set('session', token, {
+        // Update session cookie
+        response.cookies.set('session', newToken, {
             httpOnly: true,
             secure: false,
             sameSite: 'lax',
@@ -93,7 +99,7 @@ export async function POST(request: NextRequest) {
 
         return response;
     } catch (error: any) {
-        console.error('Login Error:', error);
+        console.error('Token Refresh Error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

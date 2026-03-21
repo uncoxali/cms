@@ -17,7 +17,15 @@ import {
     Globe2,
     Puzzle,
     Image,
-    LucideIcon
+    LucideIcon,
+    BarChart3,
+    Trash2,
+    Bell,
+    Layers,
+    Download,
+    Languages,
+    LayoutTemplate,
+    FileSpreadsheet,
 } from 'lucide-react';
 
 export interface AppModule {
@@ -137,6 +145,24 @@ export const ExtensionRegistry = {
             name: 'Revisions',
             icon: History,
             path: '/admin/revisions',
+            permissionsRequired: ['admin'],
+            version: '1.0.0',
+            author: 'Core'
+        },
+        {
+            id: 'analytics',
+            name: 'Analytics',
+            icon: BarChart3,
+            path: '/admin/analytics',
+            permissionsRequired: ['admin', 'editor'],
+            version: '1.0.0',
+            author: 'Core'
+        },
+        {
+            id: 'trash',
+            name: 'Trash',
+            icon: Trash2,
+            path: '/admin/trash',
             permissionsRequired: ['admin'],
             version: '1.0.0',
             author: 'Core'
