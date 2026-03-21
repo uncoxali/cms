@@ -106,6 +106,7 @@ export const useFilesStore = create<FilesState>()(
                     set((s) => ({ files: s.files.filter(f => f.id !== id) }));
                 } catch (err) {
                     console.error('[FilesStore] delete error:', err);
+                    console.error('Error message:', (err as Error).message);
                 }
             },
 

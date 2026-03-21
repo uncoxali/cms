@@ -78,7 +78,7 @@ class ApiClient {
         if (!res.ok) {
             if (isJson) {
                 const data = await res.json();
-                throw new Error(data.error || res.statusText);
+                throw new Error(data?.error || res.statusText);
             }
             throw new Error(`HTTP ${res.status}: ${res.statusText}`);
         }

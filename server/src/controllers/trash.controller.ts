@@ -78,11 +78,13 @@ export async function restoreItem(req: AuthenticatedRequest, res: Response) {
                     updated_at: toDbDate(),
                 }).onConflict('id').merge();
             } else if (collection === 'neurofy_files') {
-                const { tags: fileTags, ...fileData } = restoreData;
+                const { tags: fileTags, uploaded_on, modified_on, ...fileData } = restoreData;
                 await db('neurofy_files').insert({
                     ...fileData,
+                    uploaded_on: uploaded_on ? toDbDate(new Date(uploaded_on)) : undefined,
+                    modified_on: modified_on ? toDbDate(new Date(modified_on)) : toDbDate(),
                     tags_json: Array.isArray(fileTags) ? JSON.stringify(fileTags) : fileTags || '[]',
-                    modified_on: toDbDate(),
+                    deleted_at: null,
                 }).onConflict('id').merge();
             } else if (collection === 'neurofy_users') {
                 await db('neurofy_users').insert(restoreData).onConflict('id').merge();
@@ -136,6 +138,8 @@ export async function permanentDelete(req: AuthenticatedRequest, res: Response) 
                     }
                 }
             } catch {}
+            // Permanently delete the file row from database
+            await db('neurofy_files').where('id', id).delete();
         }
 
         await db('neurofy_trash')

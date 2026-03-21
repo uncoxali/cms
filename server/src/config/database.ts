@@ -183,7 +183,7 @@ async function ensureTables() {
             table.increments('trash_id').primary();
             table.string('item_id').notNullable();
             table.string('collection').notNullable();
-            table.text('data_json').notNullable();
+            table.text('data_json', 'longtext').notNullable();
             table.string('deleted_by');
             table.timestamp('deleted_at').defaultTo(db.fn.now());
             table.timestamp('expires_at');
@@ -193,6 +193,13 @@ async function ensureTables() {
         } else {
             await db.schema.alterTable('neurofy_trash', (table) => {
                 table.unique(['item_id', 'collection'], { indexName: 'idx_trash_item' });
+            });
+        }
+    } else {
+        // Ensure data_json column is LONGTEXT for MySQL to handle large JSON data
+        if (db.client.config.client === 'mysql2') {
+            await db.schema.alterTable('neurofy_trash', (table) => {
+                table.text('data_json', 'longtext').alter();
             });
         }
     }
@@ -291,6 +298,7 @@ async function ensureTables() {
             table.timestamp('uploaded_on').defaultTo(db.fn.now());
             table.timestamp('modified_on').defaultTo(db.fn.now());
             table.boolean('is_favorite').defaultTo(false);
+            table.timestamp('deleted_at');
             table.specificType('data', db.client.config.client === 'mysql2' ? 'LONGBLOB' : 'BLOB');
         });
     } else {
@@ -298,6 +306,12 @@ async function ensureTables() {
         if (!(await db.schema.hasColumn('neurofy_files', 'data'))) {
             await db.schema.alterTable('neurofy_files', (table) => {
                 table.specificType('data', db.client.config.client === 'mysql2' ? 'LONGBLOB' : 'BLOB');
+            });
+        }
+        // Add deleted_at column for soft delete
+        if (!(await db.schema.hasColumn('neurofy_files', 'deleted_at'))) {
+            await db.schema.alterTable('neurofy_files', (table) => {
+                table.timestamp('deleted_at');
             });
         }
     }

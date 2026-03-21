@@ -50,7 +50,7 @@ export async function getFiles(req: AuthenticatedRequest, res: Response) {
         const search = req.query.search as string;
         const favorites = req.query.favorites === 'true';
 
-        let query = db('neurofy_files').select('*');
+        let query = db('neurofy_files').whereNull('deleted_at').select('*');
 
         if (type && type !== 'all') query = query.where('type', type);
         if (folder) query = query.where('folder', folder);
@@ -190,9 +190,11 @@ export async function updateFile(req: AuthenticatedRequest, res: Response) {
 
 export async function deleteFile(req: AuthenticatedRequest, res: Response) {
     try {
+        console.log('[deleteFile] id:', req.params.id);
         const { id } = req.params;
 
         const file = await db('neurofy_files').where('id', id).first();
+        console.log('[deleteFile] file:', file);
         if (!file) return res.status(404).json({ error: 'File not found' });
 
         // Table is ensured in database.ts
@@ -200,11 +202,12 @@ export async function deleteFile(req: AuthenticatedRequest, res: Response) {
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 30);
 
+        const { data, ...fileWithoutData } = file;
         await db('neurofy_trash').insert({
             item_id: id,
             collection: 'neurofy_files',
             data_json: JSON.stringify({
-                ...file,
+                ...fileWithoutData,
                 tags: file.tags_json ? JSON.parse(file.tags_json) : [],
                 tags_json: undefined,
                 _collection_label: 'Files',
@@ -214,7 +217,8 @@ export async function deleteFile(req: AuthenticatedRequest, res: Response) {
             expires_at: toDbDate(expiresAt),
         });
 
-        await db('neurofy_files').where('id', id).delete();
+        // Soft delete: set deleted_at timestamp
+        await db('neurofy_files').where('id', id).update({ deleted_at: toDbDate() });
 
         await db('neurofy_activity').insert({
             action: 'delete',
@@ -227,6 +231,7 @@ export async function deleteFile(req: AuthenticatedRequest, res: Response) {
 
         res.json({ success: true, movedToTrash: true });
     } catch (error: any) {
+        console.error('[deleteFile] error:', error);
         res.status(500).json({ error: error.message });
     }
 }
