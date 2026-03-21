@@ -77,7 +77,7 @@ export const useFilesStore = create<FilesState>()(
                         description: f.description || undefined,
                         tags: f.tags || [],
                         isFavorite: !!f.is_favorite,
-                        url: f.filename_disk ? `${UPLOADS_BASE}/${f.filename_disk}` : undefined,
+                        url: f.id ? `${API_BASE}/files/${f.id}/view` : undefined,
                     }));
                     const folders: Folder[] = (res.folders || []).map((f: any) => ({
                         id: f.id,
