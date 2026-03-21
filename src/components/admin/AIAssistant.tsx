@@ -97,7 +97,8 @@ export default function AIAssistant() {
     const abortController = new AbortController();
     abortRef.current = abortController;
 
-    const res = await fetch('/api/ai/chat', {
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+    const res = await fetch(`${API_BASE}/ai/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

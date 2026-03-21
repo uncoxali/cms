@@ -1,99 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
-import { verifyPassword, generateToken } from '@/lib/auth';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 export async function POST(request: NextRequest) {
     try {
-        const { email, password } = await request.json();
+        const body = await request.json();
 
-        if (!email || !password) {
-            return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
-        }
-
-        const db = getDb();
-
-        const user = await db('neurofy_users')
-            .leftJoin('neurofy_roles', 'neurofy_users.role', 'neurofy_roles.id')
-            .where('neurofy_users.email', email)
-            .where('neurofy_users.status', 'active')
-            .select(
-                'neurofy_users.id',
-                'neurofy_users.email',
-                'neurofy_users.password_hash',
-                'neurofy_users.first_name',
-                'neurofy_users.last_name',
-                'neurofy_users.avatar',
-                'neurofy_users.role as role_id',
-                'neurofy_roles.name as role_name',
-                'neurofy_roles.admin_access',
-                'neurofy_roles.app_access',
-                'neurofy_roles.permissions_json'
-            )
-            .first();
-
-        if (!user) {
-            return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
-        }
-
-        const isValid = await verifyPassword(password, user.password_hash);
-
-        if (!isValid) {
-            return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
-        }
-
-        // Get token expiration from settings
-        let tokenExpirationDays = 7; // Default 7 days
-        try {
-            const settings = await db('neurofy_settings').where('key', 'token_expiration').first();
-            if (settings && settings.value) {
-                tokenExpirationDays = parseInt(settings.value) || 7;
-            }
-        } catch {}
-
-        // Generate Token
-        const token = await generateToken({
-            userId: user.id,
-            email: user.email,
-            roleId: user.role_id,
-            adminAccess: !!user.admin_access,
-        }, tokenExpirationDays);
-
-        // Update last_access
-        await db('neurofy_users').where('id', user.id).update({ last_access: new Date().toISOString() });
-
-        // Set Cookie and Return Data
-        let permissions = [];
-        try { permissions = user.permissions_json ? JSON.parse(user.permissions_json) : []; } catch { permissions = []; }
-
-        const response = NextResponse.json({
-            access_token: token,
-            expires: 60 * 60 * 24 * tokenExpirationDays,
-            token_expiration_days: tokenExpirationDays,
-            user: {
-                id: user.id,
-                email: user.email,
-                first_name: user.first_name || 'Admin',
-                last_name: user.last_name || 'User',
-                avatar: user.avatar || null,
-                role: user.role_id,
-                role_name: user.role_name,
-                admin_access: !!user.admin_access,
-                app_access: user.app_access !== 0,
-                permissions,
-            }
+        // Forward login request to Express backend
+        const backendRes = await fetch(`${API_BASE}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
         });
 
-        response.cookies.set('session', token, {
+        const data = await backendRes.json();
+
+        if (!backendRes.ok) {
+            return NextResponse.json({ error: data.error || 'Login failed' }, { status: backendRes.status });
+        }
+
+        // Set the session cookie for Next.js middleware
+        const response = NextResponse.json(data);
+        
+        const expirationDays = data.token_expiration_days || 7;
+
+        response.cookies.set('session', data.access_token, {
             httpOnly: true,
-            secure: false,
+            secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * tokenExpirationDays,
+            maxAge: 60 * 60 * 24 * expirationDays,
             path: '/'
         });
 
         return response;
     } catch (error: any) {
-        console.error('Login Error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        console.error('Login Proxy Error:', error);
+        return NextResponse.json({ error: 'Internal server error while connecting to backend' }, { status: 500 });
     }
 }

@@ -253,7 +253,8 @@ export default function ChatWidget() {
 
     try {
       const token = useAuthStore.getState().token;
-      const res = await fetch('/api/ai/chat', {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+      const res = await fetch(`${API_BASE}/ai/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

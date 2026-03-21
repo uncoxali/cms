@@ -181,7 +181,13 @@ export const useAuthStore = create<AuthState>()(
             loginWithApi: async (email: string, password: string) => {
                 set({ loading: true, error: null });
                 try {
-                    const res = await api.post('/auth/login', { email, password });
+                    const r = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password })
+                    });
+                    const res = await r.json();
+                    if (!r.ok) throw new Error(res.error || 'Login failed');
 
                     api.setToken(res.access_token);
                     localStorage.setItem('nexdirect-token', res.access_token);
@@ -257,7 +263,15 @@ export const useAuthStore = create<AuthState>()(
                 if (!token) return false;
 
                 try {
-                    const res = await api.post('/auth/refresh');
+                    const r = await fetch('/api/auth/refresh', {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    const res = await r.json();
+                    if (!r.ok) throw new Error(res.error || 'Refresh failed');
                     
                     if (res.access_token) {
                         api.setToken(res.access_token);

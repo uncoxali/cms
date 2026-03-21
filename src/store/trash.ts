@@ -48,7 +48,7 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
 
     restoreItem: async (id) => {
         try {
-            await api.post(`/trash/${id}`, { action: 'restore' });
+            await api.post(`/trash/${id}/restore`, { action: 'restore' });
             set((state) => ({ items: state.items.filter((item) => item.id !== id) }));
             return true;
         } catch (err: any) {
@@ -72,7 +72,7 @@ export const useTrashStore = create<TrashState>()((set, get) => ({
 
     emptyTrash: async () => {
         try {
-            await api.post('/trash', { action: 'empty' });
+            await api.post('/trash/empty', { action: 'empty' });
             set({ items: [] });
             return true;
         } catch (err: any) {
