@@ -43,7 +43,7 @@ def deploy():
             
             # Start Backend
             f"pm2 delete nex-backend || true",
-            f"cd {app_dir}/server && pm2 start src/index.ts --name nex-backend --interpreter=npx -- tsx",
+            f"cd {app_dir}/server && pm2 start 'npx tsx src/index.ts' --name nex-backend",
 
             # 5. Setup Frontend
             f"cd {app_dir} && npm install",
