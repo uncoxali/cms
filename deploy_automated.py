@@ -39,7 +39,7 @@ def deploy():
 
             # 4. Setup Backend
             f"cd {app_dir}/server && npm install",
-            f"cd {app_dir}/server && printf 'PORT=3001\\nJWT_SECRET=supersecret\\nDB_CLIENT=mysql2\\nDB_HOST=localhost\\nDB_USER=admin\\nDB_PASSWORD=7WLggPn7xnRp\\nDB_NAME=nexdirect\\nCORS_ORIGIN=*' > .env",
+            f"cd {app_dir}/server && printf 'PORT=3001\\nJWT_SECRET=supersecret\\nDB_CLIENT=mysql2\\nDB_HOST=localhost\\nDB_USER=admin\\nDB_PASSWORD=7WLggPn7xnRp\\nDB_NAME=nexdirect\\nCORS_ORIGIN=*\\nOPENROUTER_API_KEY=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' > .env",
             
             # Start Backend
             f"pm2 delete nex-backend || true",

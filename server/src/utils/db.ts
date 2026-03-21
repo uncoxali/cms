@@ -1,14 +1,18 @@
 import { db } from '../config/database';
 
 export function isMySQL(): boolean {
-    const client = db.client.config.client;
-    const dialect = db.client.dialect;
-    return (
+    const client = db.client?.config?.client;
+    const dialect = db.client?.dialect;
+    const isMySqlMatch = (
         client === 'mysql' || 
         client === 'mysql2' || 
         dialect === 'mysql' || 
         dialect === 'mariadb'
     );
+    if (!isMySqlMatch) {
+       console.log('[isMySQL] False negative! client:', client, 'dialect:', dialect);
+    }
+    return isMySqlMatch;
 }
 
 export async function getTables(): Promise<{ name: string }[]> {
