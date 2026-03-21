@@ -8,8 +8,8 @@ export default function ContentLayout({ children }: { children: React.ReactNode 
     <Box
       sx={{
         display: 'flex',
-        width: '100%',
-        height: '100%',
+        width: 'calc(100% + 64px)',
+        height: 'calc(100% + 64px)',
         overflow: 'hidden',
         m: -4,
       }}

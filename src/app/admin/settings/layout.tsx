@@ -41,13 +41,13 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
   const isDark = theme.palette.mode === 'dark';
 
   return (
-    <Box sx={{ display: 'flex', width: '100%', height: '100%', overflow: 'hidden', m: -4 }}>
+    <Box sx={{ display: 'flex', width: 'calc(100% + 64px)', height: 'calc(100% + 64px)', overflow: 'hidden', m: -4 }}>
       {/* Sidebar */}
       <Box
         sx={{
           width: 240,
           flexShrink: 0,
-          height: '100vh',
+          height: '100%',
           bgcolor: 'background.paper',
           borderRight: `1px solid ${theme.palette.divider}`,
           display: 'flex',
