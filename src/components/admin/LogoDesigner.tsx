@@ -129,7 +129,11 @@ export default function LogoDesigner({ settings, logoUrl, onChange, onLogoUrlCha
                 gap: 1
               }}>
                 {settings.type === 'image' ? (
-                  <Box component="img" src={logoUrl} sx={{ width: 24, height: 24, objectFit: 'contain' }} />
+                  logoUrl ? (
+                    <Box component="img" src={logoUrl} sx={{ width: 24, height: 24, objectFit: 'contain' }} />
+                  ) : (
+                    <ImageIcon size={24} />
+                  )
                 ) : (
                   IconComponent && <IconComponent size={18} color={settings.color} />
                 )}
